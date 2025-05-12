@@ -1,0 +1,673 @@
+﻿using System;
+using System.Collections;
+using System.Drawing;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
+
+namespace SqlDbAid
+{
+    class SqlHighlighter
+    {
+        private Hashtable mKW = new Hashtable();
+
+        public SqlHighlighter()
+        {
+            mKW.Add("@@CONNECTIONS", "K4");
+            mKW.Add("@@CPU_BUSY", "K4");
+            mKW.Add("@@CURSOR_ROWS", "K4");
+            mKW.Add("@@DATEFIRST", "K4");
+            mKW.Add("@@DBTS", "K4");
+            mKW.Add("@@ERROR", "K4");
+            mKW.Add("@@FETCH_STATUS", "K4");
+            mKW.Add("@@IDENTITY", "K4");
+            mKW.Add("@@IDLE", "K4");
+            mKW.Add("@@IO_BUSY", "K4");
+            mKW.Add("@@LANGID", "K4");
+            mKW.Add("@@LANGUAGE", "K4");
+            mKW.Add("@@LOCK_TIMEOUT", "K4");
+            mKW.Add("@@MAX_CONNECTIONS", "K4");
+            mKW.Add("@@MAX_PRECISION", "K4");
+            mKW.Add("@@NESTLEVEL", "K4");
+            mKW.Add("@@OPTIONS", "K4");
+            mKW.Add("@@PACK_RECEIVED", "K4");
+            mKW.Add("@@PACK_SENT", "K4");
+            mKW.Add("@@PACKET_ERRORS", "K4");
+            mKW.Add("@@PROCID", "K4");
+            mKW.Add("@@REMSERVER", "K4");
+            mKW.Add("@@ROWCOUNT", "K4");
+            mKW.Add("@@SERVERNAME", "K4");
+            mKW.Add("@@SERVICENAME", "K4");
+            mKW.Add("@@SPID", "K4");
+            mKW.Add("@@TEXTSIZE", "K4");
+            mKW.Add("@@TIMETICKS", "K4");
+            mKW.Add("@@TOTAL_ERRORS", "K4");
+            mKW.Add("@@TOTAL_READ", "K4");
+            mKW.Add("@@TOTAL_WRITE", "K4");
+            mKW.Add("@@TRANCOUNT", "K4");
+            mKW.Add("@@VERSION", "K4");
+            mKW.Add("ABS", "K4");
+            mKW.Add("ACOS", "K4");
+            mKW.Add("ADD", "K3");
+            mKW.Add("AFTER", "K3");
+            mKW.Add("ALL", "K1");
+            mKW.Add("ALTER", "K3");
+            mKW.Add("AND", "K1");
+            mKW.Add("ANSI_DEFAULTS", "K3");
+            mKW.Add("ANSI_NULL_DFLT_OFF", "K3");
+            mKW.Add("ANSI_NULL_DFLT_ON", "K3");
+            mKW.Add("ANSI_NULLS", "K3");
+            mKW.Add("ANSI_PADDING", "K3");
+            mKW.Add("ANSI_WARNINGS", "K3");
+            mKW.Add("ANY", "K1");
+            mKW.Add("APP_NAME", "K4");
+            mKW.Add("APPLOCK_MODE", "K4");
+            mKW.Add("APPLOCK_TEST", "K4");
+            mKW.Add("APPLY", "K1");
+            mKW.Add("ARITHABORT", "K3");
+            mKW.Add("ARITHIGNORE", "K3");
+            mKW.Add("AS", "K3");
+            mKW.Add("ASC", "K3");
+            mKW.Add("ASCII", "K4");
+            mKW.Add("ASIN", "K4");
+            mKW.Add("ASSEMBLYPROPERTY", "K4");
+            mKW.Add("ASYMKEY_ID", "K4");
+            mKW.Add("ASYMKEYPROPERTY", "K4");
+            mKW.Add("AT", "K3");
+            mKW.Add("ATAN", "K4");
+            mKW.Add("ATN2", "K4");
+            mKW.Add("AUTHORIZATION", "K3");
+            mKW.Add("AVG", "K4");
+            mKW.Add("BACKUP", "K3");
+            mKW.Add("BEGIN", "K3");
+            mKW.Add("BETWEEN", "K1");
+            mKW.Add("BIGINT", "K2");
+            mKW.Add("BINARY", "K2");
+            mKW.Add("BINARY_CHECKSUM", "K4");
+            mKW.Add("BIT", "K2");
+            mKW.Add("BREAK", "K3");
+            mKW.Add("BROWSE", "K3");
+            mKW.Add("BULK", "K3");
+            mKW.Add("BY", "K3");
+            mKW.Add("CASCADE", "K3");
+            mKW.Add("CASE", "K3");
+            mKW.Add("CAST", "K4");
+            mKW.Add("CATCH", "K3");
+            mKW.Add("CEILING", "K4");
+            mKW.Add("Cert_ID", "K4");
+            mKW.Add("CERTIFICATE", "K3");
+            mKW.Add("CertProperty", "K4");
+            mKW.Add("CHAR", "K2");
+            mKW.Add("CHARINDEX", "K4");
+            mKW.Add("CHECK", "K3");
+            mKW.Add("CHECKCONSTRAINTS", "K3");
+            mKW.Add("CHECKPOINT", "K3");
+            mKW.Add("CHECKSUM", "K4");
+            mKW.Add("CHECKSUM_AGG", "K4");
+            mKW.Add("CLOSE", "K3");
+            mKW.Add("CLUSTERED", "K3");
+            mKW.Add("COALESCE", "K4");
+            mKW.Add("COL_LENGTH", "K4");
+            mKW.Add("COL_NAME", "K4");
+            mKW.Add("COLLATE", "K3");
+            mKW.Add("COLLATIONPROPERTY", "K4");
+            mKW.Add("COLUMN", "K3");
+            mKW.Add("COLUMNPROPERTY", "K4");
+            mKW.Add("COLUMNS_UPDATED", "K4");
+            mKW.Add("COLUMNSTORE", "K3");
+            mKW.Add("COMMIT", "K3");
+            mKW.Add("COMMITTED", "K3");
+            mKW.Add("COMPRESS", "K4");
+            mKW.Add("COMPUTE", "K3");
+            mKW.Add("CONCAT", "K3");
+            mKW.Add("CONCAT_NULL_YIELDS_NULL", "K3");
+            mKW.Add("CONNECTIONPROPERTY", "K4");
+            mKW.Add("CONSTRAINT", "K3");
+            mKW.Add("CONTAINS", "K3");
+            mKW.Add("CONTAINSTABLE", "K3");
+            mKW.Add("CONTEXT_INFO", "K3");
+            mKW.Add("CONTINUE", "K3");
+            mKW.Add("CONVERSATION", "K3");
+            mKW.Add("CONVERT", "K4");
+            mKW.Add("COS", "K4");
+            mKW.Add("COT", "K4");
+            mKW.Add("COUNT", "K4");
+            mKW.Add("COUNT_BIG", "K4");
+            mKW.Add("CREATE", "K3");
+            mKW.Add("CROSS", "K1");
+            mKW.Add("CUME_DIST", "K4");
+            mKW.Add("CURRENT", "K3");
+            mKW.Add("CURRENT_DATE", "K3");
+            mKW.Add("CURRENT_REQUEST_ID", "K4");
+            mKW.Add("CURRENT_TIME", "K3");
+            mKW.Add("CURRENT_TIMESTAMP", "K4");
+            mKW.Add("CURRENT_TRANSACTION_ID", "K4");
+            mKW.Add("CURRENT_USER", "K4");
+            mKW.Add("CURSOR", "K3");
+            mKW.Add("CURSOR_CLOSE_ON_COMMIT", "K3");
+            mKW.Add("CURSOR_STATUS", "K4");
+            mKW.Add("DATABASE", "K3");
+            mKW.Add("DATABASE_PRINCIPAL_ID", "K4");
+            mKW.Add("DATABASEPROPERTY", "K4");
+            mKW.Add("DATABASEPROPERTYEX", "K4");
+            mKW.Add("DATALENGTH", "K4");
+            mKW.Add("DATE", "K2");
+            mKW.Add("DATEADD", "K4");
+            mKW.Add("DATEDIFF", "K4");
+            mKW.Add("DATEFIRST", "K3");
+            mKW.Add("DATEFORMAT", "K3");
+            mKW.Add("DATENAME", "K4");
+            mKW.Add("DATEPART", "K4");
+            mKW.Add("DATETIME", "K2");
+            mKW.Add("DATETIME2", "K2");
+            mKW.Add("DATETIMEOFFSET", "K2");
+            mKW.Add("DAY", "K4");
+            mKW.Add("DB_ID", "K4");
+            mKW.Add("DB_NAME", "K4");
+            mKW.Add("DBCC", "K3");
+            mKW.Add("DEADLOCK_PRIORITY", "K3");
+            mKW.Add("DEALLOCATE", "K3");
+            mKW.Add("DECIMAL", "K2");
+            mKW.Add("DECLARE", "K3");
+            mKW.Add("DECOMPRESS", "K4");
+            mKW.Add("DECRYPTBYCERT", "K4");
+            mKW.Add("DECRYPTBYKEY", "K4");
+            mKW.Add("DECRYPTBYKEYAUTOCERT", "K4");
+            mKW.Add("DECRYPTBYPASSPHRASE", "K4");
+            mKW.Add("DEFAULT", "K3");
+            mKW.Add("DEGREES", "K4");
+            mKW.Add("DELAY", "K3");
+            mKW.Add("DELETE", "K3");
+            mKW.Add("DENSE_RANK", "K4");
+            mKW.Add("DENY", "K3");
+            mKW.Add("DESC", "K3");
+            mKW.Add("DIFFERENCE", "K4");
+            mKW.Add("DISABLE", "K3");
+            mKW.Add("DISABLE_DEF_CNST_CHK", "K3");
+            mKW.Add("DISK", "K3");
+            mKW.Add("DISTINCT", "K3");
+            mKW.Add("DISTRIBUTED", "K3");
+            mKW.Add("DOUBLE", "K3");
+            mKW.Add("DROP", "K3");
+            mKW.Add("DUMP", "K3");
+            mKW.Add("ELSE", "K3");
+            mKW.Add("ENABLE", "K3");
+            mKW.Add("ENCRYPTBYCERT", "K4");
+            mKW.Add("ENCRYPTBYKEY", "K4");
+            mKW.Add("ENCRYPTBYPASSPHRASE", "K4");
+            mKW.Add("END", "K3");
+            mKW.Add("ERRLVL", "K3");
+            mKW.Add("ERROR_LINE", "K4");
+            mKW.Add("ERROR_MESSAGE", "K4");
+            mKW.Add("ERROR_NUMBER", "K4");
+            mKW.Add("ERROR_PROCEDURE", "K4");
+            mKW.Add("ERROR_SEVERITY", "K4");
+            mKW.Add("ERROR_STATE", "K4");
+            mKW.Add("ESCAPE", "K3");
+            mKW.Add("EVENTDATA", "K4");
+            mKW.Add("EXCEPT", "K3");
+            mKW.Add("EXEC", "K3");
+            mKW.Add("EXECUTE", "K3");
+            mKW.Add("EXISTS", "K1");
+            mKW.Add("EXIT", "K3");
+            mKW.Add("EXP", "K4");
+            mKW.Add("EXPAND", "K3");
+            mKW.Add("EXTERNAL", "K3");
+            mKW.Add("FAST", "K3");
+            mKW.Add("FASTFIRSTROW", "K3");
+            mKW.Add("FETCH", "K3");
+            mKW.Add("FILE", "K3");
+            mKW.Add("FILE_ID", "K4");
+            mKW.Add("FILE_IDEX", "K4");
+            mKW.Add("FILE_NAME", "K4");
+            mKW.Add("FILEGROUP_ID", "K4");
+            mKW.Add("FILEGROUP_NAME", "K4");
+            mKW.Add("FILEGROUPPROPERTY", "K4");
+            mKW.Add("FILEPROPERTY", "K4");
+            mKW.Add("FILLFACTOR", "K3");
+            mKW.Add("FIPS_FLAGGER", "K3");
+            mKW.Add("FIRST_VALUE", "K4");
+            mKW.Add("FLOAT", "K2");
+            mKW.Add("FLOOR", "K4");
+            mKW.Add("FMTONLY", "K3");
+            mKW.Add("FOR", "K3");
+            mKW.Add("FORCE", "K3");
+            mKW.Add("FORCED", "K3");
+            mKW.Add("FORCEPLAN", "K3");
+            mKW.Add("FOREIGN", "K3");
+            mKW.Add("FORMATMESSAGE", "K4");
+            mKW.Add("FREETEXT", "K3");
+            mKW.Add("FREETEXTTABLE", "K3");
+            mKW.Add("FROM", "K3");
+            mKW.Add("FULL", "K3");
+            mKW.Add("FULLTEXTCATALOGPROPERTY", "K4");
+            mKW.Add("FULLTEXTSERVICEPROPERTY", "K4");
+            mKW.Add("FUNCTION", "K3");
+            mKW.Add("GEOGRAPHY", "K2");
+            mKW.Add("GEOMETRY", "K2");
+            mKW.Add("GET", "K3");
+            mKW.Add("GET_TRANSMISSION_STATUS", "K4");
+            mKW.Add("GETANSINULL", "K4");
+            mKW.Add("GETDATE", "K4");
+            mKW.Add("GETUTCDATE", "K4");
+            mKW.Add("GO", "K3");
+            mKW.Add("GOTO", "K3");
+            mKW.Add("GRANT", "K3");
+            mKW.Add("GROUP", "K3");
+            mKW.Add("GROUPING", "K4");
+            mKW.Add("GROUPING_ID", "K4");
+            mKW.Add("HAS_DBACCESS", "K4");
+            mKW.Add("HAS_PERMS_BY_NAME", "K4");
+            mKW.Add("HASH", "K3");
+            mKW.Add("HASHBYTES", "K4");
+            mKW.Add("HAVING", "K3");
+            mKW.Add("HIERARCHYID", "K2");
+            mKW.Add("HOLDLOCK", "K3");
+            mKW.Add("HOST_ID", "K4");
+            mKW.Add("HOST_NAME", "K4");
+            mKW.Add("IDENT_CURRENT", "K4");
+            mKW.Add("IDENT_INCR", "K4");
+            mKW.Add("IDENT_SEED", "K4");
+            mKW.Add("IDENTITY", "K3");
+            mKW.Add("IDENTITY_INSERT", "K3");
+            mKW.Add("IDENTITYCOL", "K3");
+            mKW.Add("IF", "K3");
+            mKW.Add("IGNORE_CONSTRAINTS", "K3");
+            mKW.Add("IGNORE_DUP_KEY", "K3");
+            mKW.Add("IGNORE_TRIGGERS", "K3");
+            mKW.Add("IMAGE", "K2");
+            mKW.Add("IMPLICIT_TRANSACTIONS", "K3");
+            mKW.Add("IN", "K1");
+            mKW.Add("INCLUDE", "K3");
+            mKW.Add("INDEX", "K3");
+            mKW.Add("INDEX_COL", "K4");
+            mKW.Add("INDEXKEY_PROPERTY", "K4");
+            mKW.Add("INDEXPROPERTY", "K4");
+            mKW.Add("INNER", "K1");
+            mKW.Add("INSERT", "K3");
+            mKW.Add("INSTEAD", "K3");
+            mKW.Add("INT", "K2");
+            mKW.Add("INTERSECT", "K3");
+            mKW.Add("INTO", "K3");
+            mKW.Add("IO", "K3");
+            mKW.Add("IS", "K1");
+            mKW.Add("IS_MEMBER", "K4");
+            mKW.Add("IS_OBJECTSIGNED", "K4");
+            mKW.Add("IS_SRVROLEMEMBER", "K4");
+            mKW.Add("ISDATE", "K4");
+            mKW.Add("ISJSON", "K4");
+            mKW.Add("ISNULL", "K4");
+            mKW.Add("ISNUMERIC", "K4");
+            mKW.Add("ISOLATION", "K3");
+            mKW.Add("JOIN", "K1");
+            mKW.Add("JSON", "K3");
+            mKW.Add("JSON_MODIFY", "K4");
+            mKW.Add("JSON_QUERY", "K4");
+            mKW.Add("JSON_VALUE", "K4");
+            mKW.Add("KEEP", "K3");
+            mKW.Add("KEEPDEFAULTS", "K3");
+            mKW.Add("KEEPFIXED", "K3");
+            mKW.Add("KEEPIDENTITY", "K3");
+            mKW.Add("KEY", "K3");
+            mKW.Add("Key_GUID", "K4");
+            mKW.Add("Key_ID", "K4");
+            mKW.Add("KILL", "K3");
+            mKW.Add("LAG", "K4");
+            mKW.Add("LANGUAGE", "K3");
+            mKW.Add("LAST_VALUE", "K4");
+            mKW.Add("LEAD", "K4");
+            mKW.Add("LEFT", "K1");
+            mKW.Add("LEN", "K4");
+            mKW.Add("LEVEL", "K3");
+            mKW.Add("LIKE", "K1");
+            mKW.Add("LINENO", "K3");
+            mKW.Add("LOAD", "K3");
+            mKW.Add("LOCK_TIMEOUT", "K3");
+            mKW.Add("LOG", "K4");
+            mKW.Add("LOG10", "K4");
+            mKW.Add("LOGINPROPERTY", "K4");
+            mKW.Add("LOOP", "K3");
+            mKW.Add("LOWER", "K4");
+            mKW.Add("LTRIM", "K4");
+            mKW.Add("MASTER", "K3");
+            mKW.Add("MATCHED", "K1");
+            mKW.Add("MAX", "K4");
+            mKW.Add("MAXDOP", "K3");
+            mKW.Add("MERGE", "K3");
+            mKW.Add("MIN", "K4");
+            mKW.Add("MIN_ACTIVE_ROWVERSION", "K4");
+            mKW.Add("MONEY", "K2");
+            mKW.Add("MONTH", "K4");
+            mKW.Add("MOVE", "K3");
+            mKW.Add("NATIONAL", "K3");
+            mKW.Add("NCHAR", "K2");
+            mKW.Add("NEWID", "K4");
+            mKW.Add("NEWSEQUENTIALID", "K4");
+            mKW.Add("NEXT", "K3");
+            mKW.Add("NOCHECK", "K3");
+            mKW.Add("NOCOUNT", "K3");
+            mKW.Add("NOEXEC", "K3");
+            mKW.Add("NOEXPAND", "K3");
+            mKW.Add("NOLOCK", "K3");
+            mKW.Add("NONCLUSTERED", "K3");
+            mKW.Add("NOT", "K1");
+            mKW.Add("NOTIFICATION", "K3");
+            mKW.Add("NOWAIT", "K3");
+            mKW.Add("NTEXT", "K2");
+            mKW.Add("NTILE", "K4");
+            mKW.Add("NULL", "K1");
+            mKW.Add("NULLIF", "K4");
+            mKW.Add("NUMERIC", "K2");
+            mKW.Add("NUMERIC_ROUNDABORT", "K3");
+            mKW.Add("NVARCHAR", "K2");
+            mKW.Add("OBJECT_DEFINITION", "K4");
+            mKW.Add("OBJECT_ID", "K4");
+            mKW.Add("OBJECT_NAME", "K4");
+            mKW.Add("OBJECT_SCHEMA_NAME", "K4");
+            mKW.Add("OBJECTPROPERTY", "K4");
+            mKW.Add("OBJECTPROPERTYEX", "K4");
+            mKW.Add("OF", "K3");
+            mKW.Add("OFF", "K3");
+            mKW.Add("OFFSET", "K3");
+            mKW.Add("OFFSETS", "K3");
+            mKW.Add("ON", "K3");
+            mKW.Add("OPEN", "K3");
+            mKW.Add("OPENDATASOURCE", "K3");
+            mKW.Add("OPENJSON", "K4");
+            mKW.Add("OPENQUERY", "K3");
+            mKW.Add("OPENROWSET", "K3");
+            mKW.Add("OPENXML", "K3");
+            mKW.Add("OPTION", "K3");
+            mKW.Add("OR", "K1");
+            mKW.Add("ORDER", "K3");
+            mKW.Add("ORIGINAL_DB_NAME", "K4");
+            mKW.Add("ORIGINAL_LOGIN", "K4");
+            mKW.Add("OUT", "K3");
+            mKW.Add("OUTER", "K1");
+            mKW.Add("OUTPUT", "K3");
+            mKW.Add("OVER", "K3");
+            mKW.Add("PAD_INDEX", "K3");
+            mKW.Add("PAGLOCK", "K3");
+            mKW.Add("PARAMETERIZATION", "K3");
+            mKW.Add("PARSENAME", "K4");
+            mKW.Add("PARSEONLY", "K3");
+            mKW.Add("PARTITION", "K3");
+            mKW.Add("PATINDEX", "K4");
+            mKW.Add("PERCENT", "K3");
+            mKW.Add("PERCENT_RANK", "K4");
+            mKW.Add("PERCENTILE_CONT", "K4");
+            mKW.Add("PERCENTILE_DISC", "K4");
+            mKW.Add("PERMISSIONS", "K4");
+            mKW.Add("PI", "K4");
+            mKW.Add("PIVOT", "K1");
+            mKW.Add("PLAN", "K3");
+            mKW.Add("POWER", "K4");
+            mKW.Add("PRECISION", "K3");
+            mKW.Add("PRIMARY", "K3");
+            mKW.Add("PRINT", "K3");
+            mKW.Add("PROC", "K3");
+            mKW.Add("PROCEDURE", "K3");
+            mKW.Add("PROFILE", "K3");
+            mKW.Add("PUBLIC", "K3");
+            mKW.Add("PUBLISHINGSERVERNAME", "K4");
+            mKW.Add("PWDCOMPARE", "K4");
+            mKW.Add("PWDENCRYPT", "K4");
+            mKW.Add("QUERY_GOVERNOR_COST_LIMIT", "K3");
+            mKW.Add("QUOTED_IDENTIFIER", "K3");
+            mKW.Add("QUOTENAME", "K4");
+            mKW.Add("RADIANS", "K4");
+            mKW.Add("RAISERROR", "K3");
+            mKW.Add("RAND", "K4");
+            mKW.Add("RANK", "K4");
+            mKW.Add("READ", "K3");
+            mKW.Add("READCOMMITTED", "K3");
+            mKW.Add("READCOMMITTEDLOCK", "K3");
+            mKW.Add("READPAST", "K3");
+            mKW.Add("READTEXT", "K3");
+            mKW.Add("READUNCOMMITTED", "K3");
+            mKW.Add("REAL", "K2");
+            mKW.Add("RECEIVE", "K3");
+            mKW.Add("RECOMPILE", "K3");
+            mKW.Add("RECONFIGURE", "K3");
+            mKW.Add("REFERENCES", "K3");
+            mKW.Add("REMOTE_PROC_TRANSACTIONS", "K3");
+            mKW.Add("REORGANIZE", "K3");
+            mKW.Add("REPEATABLE", "K3");
+            mKW.Add("REPEATABLEREAD", "K3");
+            mKW.Add("REPLACE", "K4");
+            mKW.Add("REPLICATE", "K4");
+            mKW.Add("REPLICATION", "K3");
+            mKW.Add("RESTORE", "K3");
+            mKW.Add("RESTRICT", "K3");
+            mKW.Add("RETURN", "K3");
+            mKW.Add("RETURNS", "K3");
+            mKW.Add("REVERSE", "K4");
+            mKW.Add("REVERT", "K3");
+            mKW.Add("REVOKE", "K3");
+            mKW.Add("RIGHT", "K1");
+            mKW.Add("ROBUST", "K3");
+            mKW.Add("ROLLBACK", "K3");
+            mKW.Add("ROUND", "K4");
+            mKW.Add("ROW_NUMBER", "K4");
+            mKW.Add("ROWCOUNT", "K3");
+            mKW.Add("ROWCOUNT_BIG", "K3");
+            mKW.Add("ROWGUIDCOL", "K3");
+            mKW.Add("ROWLOCK", "K3");
+            mKW.Add("RTRIM", "K4");
+            mKW.Add("RULE", "K3");
+            mKW.Add("SAVE", "K3");
+            mKW.Add("SCHEMA", "K3");
+            mKW.Add("SCHEMA_ID", "K4");
+            mKW.Add("SCHEMA_NAME", "K4");
+            mKW.Add("SCOPE_IDENTITY", "K4");
+            mKW.Add("SECURITYAUDIT", "K3");
+            mKW.Add("SELECT", "K3");
+            mKW.Add("SEND", "K3");
+            mKW.Add("SERIALIZABLE", "K3");
+            mKW.Add("SERVERPROPERTY", "K4");
+            mKW.Add("SERVICE", "K3");
+            mKW.Add("SESSION_CONTEXT", "K4");
+            mKW.Add("SESSION_USER", "K4");
+            mKW.Add("SESSIONPROPERTY", "K4");
+            mKW.Add("SET", "K3");
+            mKW.Add("SETUSER", "K3");
+            mKW.Add("SHOW_STATISTICS", "K3");
+            mKW.Add("SHOWPLAN_ALL", "K3");
+            mKW.Add("SHOWPLAN_TEXT", "K3");
+            mKW.Add("SHUTDOWN", "K3");
+            mKW.Add("SIGN", "K4");
+            mKW.Add("SIGNATURE", "K3");
+            mKW.Add("SignByAsymKey", "K4");
+            mKW.Add("SignByCert", "K4");
+            mKW.Add("SIMPLE", "K3");
+            mKW.Add("SIN", "K4");
+            mKW.Add("SMALLDATETIME", "K2");
+            mKW.Add("SMALLINT", "K2");
+            mKW.Add("SMALLMONEY", "K2");
+            mKW.Add("SOME", "K1");
+            mKW.Add("SOUNDEX", "K4");
+            mKW.Add("SOURCE", "K1");
+            mKW.Add("SPACE", "K4");
+            mKW.Add("SQL_VARIANT", "K2");
+            mKW.Add("SQL_VARIANT_PROPERTY", "K4");
+            mKW.Add("SQRT", "K4");
+            mKW.Add("SQUARE", "K4");
+            mKW.Add("STATISTICS", "K3");
+            mKW.Add("STATS_DATE", "K4");
+            mKW.Add("STDEV", "K4");
+            mKW.Add("STDEVP", "K4");
+            mKW.Add("STR", "K4");
+            mKW.Add("STRING_AGG", "K4");
+            mKW.Add("STRING_SPLIT", "K4");
+            mKW.Add("STUFF", "K4");
+            mKW.Add("SUBSTRING", "K4");
+            mKW.Add("SUM", "K4");
+            mKW.Add("SUSER_ID", "K4");
+            mKW.Add("SUSER_NAME", "K4");
+            mKW.Add("SUSER_SID", "K4");
+            mKW.Add("SUSER_SNAME", "K4");
+            mKW.Add("SWITCHOFFSET", "K4");
+            mKW.Add("SYMMETRIC", "K3");
+            mKW.Add("SYNONYM", "K3");
+            mKW.Add("SYSDATETIME", "K4");
+            mKW.Add("SYSDATETIMEOFFSET", "K4");
+            mKW.Add("SYSNAME", "K2");
+            mKW.Add("SYSTEM_USER", "K4");
+            mKW.Add("SYSUTCDATETIME", "K4");
+            mKW.Add("TABLE", "K3");
+            mKW.Add("TABLESAMPLE", "K3");
+            mKW.Add("TABLOCK", "K3");
+            mKW.Add("TABLOCKX", "K3");
+            mKW.Add("TAN", "K4");
+            mKW.Add("TAPE", "K3");
+            mKW.Add("TARGET", "K3");
+            mKW.Add("TERTIARY_WEIGHTS", "K4");
+            mKW.Add("TEXT", "K2");
+            mKW.Add("TEXTPTR", "K4");
+            mKW.Add("TEXTSIZE", "K3");
+            mKW.Add("TEXTVALID", "K4");
+            mKW.Add("THEN", "K3");
+            mKW.Add("THROW", "K3");
+            mKW.Add("TIME", "K2");
+            mKW.Add("TIMESTAMP", "K2");
+            mKW.Add("TINYINT", "K2");
+            mKW.Add("TO", "K3");
+            mKW.Add("TODATETIMEOFFSET", "K4");
+            mKW.Add("TOP", "K3");
+            mKW.Add("TRAN", "K3");
+            mKW.Add("TRANSACTION", "K3");
+            mKW.Add("TRANSLATE", "K4");
+            mKW.Add("TRIGGER", "K3");
+            mKW.Add("TRIGGER_NESTLEVEL", "K4");
+            mKW.Add("TRIM", "K4");
+            mKW.Add("TRUNCATE", "K3");
+            mKW.Add("TRY", "K3");
+            mKW.Add("TRY_CONVERT", "K4");
+            mKW.Add("TRY_PARSE", "K4");
+            mKW.Add("TSEQUAL", "K3");
+            mKW.Add("TYPE", "K3");
+            mKW.Add("TYPE_ID", "K4");
+            mKW.Add("TYPE_NAME", "K4");
+            mKW.Add("TYPEPROPERTY", "K4");
+            mKW.Add("UNCOMMITTED", "K3");
+            mKW.Add("UNICODE", "K4");
+            mKW.Add("UNION", "K3");
+            mKW.Add("UNIQUE", "K3");
+            mKW.Add("UNIQUEIDENTIFIER", "K2");
+            mKW.Add("UNPIVOT", "K1");
+            mKW.Add("UPDATE", "K3");
+            mKW.Add("UPDATETEXT", "K3");
+            mKW.Add("UPDLOCK", "K3");
+            mKW.Add("UPPER", "K4");
+            mKW.Add("USE", "K3");
+            mKW.Add("USER", "K4");
+            mKW.Add("USER_ID", "K4");
+            mKW.Add("USER_NAME", "K4");
+            mKW.Add("USEROPTIONS", "K3");
+            mKW.Add("USING", "K3");
+            mKW.Add("VALUES", "K3");
+            mKW.Add("VAR", "K4");
+            mKW.Add("VARBINARY", "K2");
+            mKW.Add("VARCHAR", "K2");
+            mKW.Add("VARP", "K4");
+            mKW.Add("VARYING", "K3");
+            mKW.Add("VerifySignedByCert", "K4");
+            mKW.Add("VIEW", "K3");
+            mKW.Add("WAITFOR", "K3");
+            mKW.Add("WHEN", "K3");
+            mKW.Add("WHERE", "K3");
+            mKW.Add("WHILE", "K3");
+            mKW.Add("WITH", "K3");
+            mKW.Add("WITHIN GROUP", "K3");
+            mKW.Add("WRITETEXT", "K3");
+            mKW.Add("XACT_ABORT", "K3");
+            mKW.Add("XACT_STATE", "K4");
+            mKW.Add("XLOCK", "K3");
+            mKW.Add("XML", "K3");
+            mKW.Add("xml_schema_namespace", "K4");
+            mKW.Add("YEAR", "K4");
+        }
+
+        public void Highlight(RichTextBox rtbCode)
+        {
+            rtbCode.SelectionStart = 0;
+            rtbCode.SelectionLength = rtbCode.Text.Length;
+            rtbCode.SelectionBackColor = Color.White;
+            rtbCode.SelectionColor = Color.Black;
+
+            Regex r = new Regex(@"([\n\[\](),;'""])|(\s+)|(--)|(/\*)|(\*/)|([!=<>\+\-\*/%&\|\^])");
+
+            String[] tokens = r.Split(rtbCode.Text);
+
+            string openToken = "";
+
+            int pos = 0;
+            int selStart = 0;
+
+            foreach (string currentToken in tokens)
+            {
+                string token = currentToken.Replace("\t", "").Replace(" ", "");
+
+                if (token != "")
+                {
+                    if (openToken != "")
+                    {
+                        if
+                            (
+                                (token == "*/" && openToken == "/*") ||
+                                (token == "\n" && openToken == "--") ||
+                                (token == "'" && openToken == "'") ||
+                                (token == "\"" && openToken == "\"") ||
+                                (token == "]" && openToken == "[")
+                            )
+                        {
+                            rtbCode.Select(selStart, pos - selStart + token.Length);
+                            if (token == "]")
+                            {
+                                rtbCode.SelectionColor = Color.Black;
+                            }
+                            else if (token == "'" || token == "\"")
+                            {
+                                rtbCode.SelectionColor = Color.Red;
+                            }
+                            else
+                            {
+                                rtbCode.SelectionColor = Color.Green;
+                            }
+                            openToken = "";
+                        }
+                    }
+                    else if ((token == "/*" || token == "--" || token == "'" || token == "\"" || token == "[") && openToken == "")
+                    {
+                        openToken = token;
+                        selStart = pos;
+                    }
+                    else
+                    {
+                        string hv = (string)mKW[token.ToUpper()];
+                        if (!string.IsNullOrEmpty(hv))
+                        {
+                            rtbCode.Select(pos, token.Length);
+
+                            switch (hv)
+                            {
+                                case "K1":
+                                    rtbCode.SelectionColor = Color.Gray;
+                                    break;
+                                case "K2":
+                                    rtbCode.SelectionColor = Color.Blue;
+                                    break;
+                                case "K3":
+                                    rtbCode.SelectionColor = Color.Blue;
+                                    break;
+                                case "K4":
+                                    rtbCode.SelectionColor = Color.Magenta;
+                                    break;
+                            }
+                        }
+                    }
+                }
+                pos = pos + currentToken.Length;
+            }
+        }
+    }
+}
