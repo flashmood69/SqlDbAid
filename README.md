@@ -4,9 +4,22 @@
   <img src="Res/SDALogo.png" alt="SqlDbAid Logo" width="200"/>
 </p>
 
-SqlDbAid is an intuitive standalone application that enables you to easily script database items and data for SQL Server 2005 and later versions. It's a powerful tool for database developers and administrators to manage, compare, and export SQL Server database objects and data.
+SqlDbAid is an intuitive standalone application that enables you to easily script database items and data for SQL Server. It's a powerful tool for database developers and administrators to manage, compare and export SQL Server database objects and data.
 
 ## Features
+
+### Portable
+
+### User-Friendly Interface
+<p align="center">
+  <img src="Res/F01-MainForm.png" alt="Main Interface" width="700"/>
+</p>
+
+### Intuitive menu system
+<p align="center">
+  <img src="Res/F02-Menu.png" alt="Menu System" width="700"/>
+</p>
+
 
 ### Database Object Scripting
 - Script tables, views, stored procedures, functions, and other database objects
@@ -19,40 +32,29 @@ SqlDbAid is an intuitive standalone application that enables you to easily scrip
 </p>
 
 - Compare database objects between different databases
-- Identify renamed objects
-- Generate change scripts
+- Compare the same database objects between different points in time
+
 
 ### Data Export
 <p align="center">
   <img src="Res/F04-Export.png" alt="Data Export" width="700"/>
 </p>
 
-- Export data to various formats (Text, Script, Table)
+- Export data to various formats (Text, Insert Script)
 - Customizable export settings (delimiters, text qualifiers, etc.)
 - Support for Unicode
 
 ### Database Reports
-- Generate "Database Permissions" reports
-- Analyze database structure and security
-
-### User-Friendly Interface
-<p align="center">
-  <img src="Res/F01-MainForm.png" alt="Main Interface" width="700"/>
-</p>
-
-- Intuitive menu system
-<p align="center">
-  <img src="Res/F02-Menu.png" alt="Menu System" width="700"/>
-</p>
-
-- Windows authentication and SQL Server authentication support
-- Configurable connection timeout
+- Processes
+- Deadlocks
+- Database Statistics
+- Database Indexes
+- Database Permissions
 
 ## System Requirements
 
 - Windows operating system
 - .NET Framework 4.8
-- SQL Server 2005 or later
 - Appropriate database permissions (VIEW SERVER STATE, VIEW DATABASE STATE for some features)
 
 ## Installation
@@ -68,34 +70,42 @@ No installation is required as SqlDbAid is a portable application.
 ### Connecting to a Database
 
 1. Launch SqlDbAid
-2. Enter your SQL Server instance name
+2. Enter your SQL Server instance name (you can manage a server list from the option menu)
 3. Choose authentication method (Windows or SQL Server)
 4. If using SQL Server authentication, enter your username and password
-5. Click "Connect"
-6. Select a database from the dropdown list
+5. Select a database from the dropdown list (this automatically opens the connection)
 
 ### Scripting Database Objects
 
 1. Connect to a database
 2. Select the object types you want to script
-3. Choose specific objects or select all
-4. Click "Script" to generate the SQL scripts
+3. Click "Refresh" to generate the SQL scripts
+4. Choose specific objects or select all (Click Sel. column)
+5. Click "Script" to export the SQL scripts
 
 ### Comparing Databases
 
 1. Connect to a database
-2. Click on the "Compare" button in the toolbar
-3. Configure source and target database connections
-4. Select object types to compare
-5. Click "Compare" to see differences
+2. Select the object types you want to compare and click "Refresh"
+3. Choose "Offline Compare" from the menu then click export selected objects
+4. Repeat the same process for the target database
+5. Choose "Offline Compare" from the menu then click compare exported objects
+6. Select two files to compare then click "Compare"
+
+Offline compare allows you to compare different point in time of the same database.
 
 ### Exporting Data
 
 1. Connect to a database
-2. Click on the "Export" button in the toolbar
-3. Enter your SQL query or select a table
-4. Configure export settings (format, delimiters, etc.)
-5. Click "Export" to generate the output file
+2. Right click on a table object and select "Export Data"
+3. Configure export settings (format, delimiters, etc.)
+4. Click "Export" to generate the output file
+
+### Shortcuts and Hints
+
+1. Double click a row in the main window to view the script (CTRL+F / F3 to search)
+2. Right click a row in the main window to open the context menu
+3. Double click a row in the Processes report window to view the process script
 
 ## License
 

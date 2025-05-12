@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("SqlDbAid")]
-[assembly: AssemblyDescription("SqlDbAid is an intuitive standalone application that enables you to easily script database items and data for SQL Server 2005 and later versions. It's a powerful tool for database developers and administrators to manage, compare, and export SQL Server database objects and data.")]
+[assembly: AssemblyDescription("SqlDbAid is an intuitive standalone application that enables you to easily script database items and data for SQL Server. It's a powerful tool for database developers and administrators to manage, compare, and export SQL Server database objects and data.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("SqlDbAid")]
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.6.2.0")]
-[assembly: AssemblyFileVersion("2.6.2.0")]
+[assembly: AssemblyVersion("2.6.3.0")]
+[assembly: AssemblyFileVersion("2.6.3.0")]
