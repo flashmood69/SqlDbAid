@@ -1,6 +1,6 @@
 # SqlDbAid Changelog
 
-## [v2.6.2.0]
+## [v2.6.3.0]
 - First open source release.
 - .NET Framework upgraded to 4.8.
 - Added more keywords to syntax highlighting.
