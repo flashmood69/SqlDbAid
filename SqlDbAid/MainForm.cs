@@ -20,6 +20,8 @@ namespace SqlDbAid
         #region Fields
 
         private bool mCheckAll = false;
+        private bool mHasXeSessions = false;
+        private bool mHasMSDB = false;
 
         private int mCurrentRow = -1;
         private int mQryCount = 1;
@@ -107,6 +109,46 @@ namespace SqlDbAid
             }
 
             return connString;
+        }
+
+        private bool XeSessionsCheck()
+        {
+            try
+            {
+                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                {
+                    SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.HasXeSessions), cnn);
+                    cnn.Open();
+
+                    cmd.ExecuteNonQuery();
+                }
+
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private bool MsdbCheck()
+        {
+            try
+            {
+                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                {
+                    SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.HasMSDB), cnn);
+                    cnn.Open();
+
+                    cmd.ExecuteNonQuery();
+                }
+
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         private bool RunnableQuery(int compatibilityLevel, bool checkViewServerStateRights, bool checkViewDatabaseStateRights, string dbName)
@@ -569,12 +611,12 @@ namespace SqlDbAid
             serverMonitorToolStripMenuItem.Enabled = serverLevel;
             //submenu
             processesToolStripMenuItem.Enabled = serverLevel;
-            deadlocksToolStripMenuItem.Enabled = serverLevel;
+            deadlocksToolStripMenuItem.Enabled = serverLevel && mHasXeSessions;
             locksToolStripMenuItem.Enabled = serverLevel;
             topQueriesTimeToolStripMenuItem.Enabled = serverLevel;
             topQueriesReadsToolStripMenuItem.Enabled = serverLevel;
             cpuToolStripMenuItem.Enabled = serverLevel;
-            jobsToolStripMenuItem.Enabled = serverLevel;
+            jobsToolStripMenuItem.Enabled = serverLevel && mHasMSDB;
 
             //ServerInfo
             serverInfoToolStripMenuItem.Enabled = serverLevel;
@@ -858,6 +900,9 @@ namespace SqlDbAid
                     cmbDatabase.DisplayMember = "database_name";
                     cmbDatabase.ValueMember = "id";
                 }
+
+                mHasXeSessions = XeSessionsCheck();
+                mHasMSDB = MsdbCheck();
 
                 this.Cursor = Cursors.Default;
             }
@@ -1217,6 +1262,8 @@ namespace SqlDbAid
 
             string hideAppQry = Properties.Settings.Default.TlsHideAppQueries ? "" : "--";
             string currentDbOnly = "--";
+            string hasMsdb = mHasMSDB ? "" : "--";
+            string hasNotMsdb = mHasMSDB ? "--" : "";
             //string currentDbOnly = (mDbName != "") ? "" : "--";
             //string database_id = (FeatureQuery(QueryHelper.QueryId.FeatureTest, "dm_exec_sessions", "database_id")) ? "" : "--";
             //string dbid = (database_id == "--") ? "" : "--";
@@ -1229,7 +1276,7 @@ namespace SqlDbAid
             resultForm.ShowIcon = true;
 
             resultForm.ConnectionString = BuildConnectionString("master");
-            resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.Processes), hideAppQry, currentDbOnly, mDbName.Replace("'", "''"));
+            resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.Processes), hideAppQry, currentDbOnly, mDbName.Replace("'", "''"), hasMsdb, hasNotMsdb);
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
             resultForm.ExportColumn = "sql_statement";
@@ -1306,6 +1353,9 @@ namespace SqlDbAid
                 return;
             }
 
+            string hasMsdb = mHasMSDB ? "" : "--";
+            string hasNotMsdb = mHasMSDB ? "--" : "";
+
             ResultForm resultForm = new ResultForm();
             resultForm.AppendTitle = string.Format("Deadlocks ({0})", cmbServer.Text);
             resultForm.ShowInTaskbar = true;
@@ -1313,7 +1363,7 @@ namespace SqlDbAid
             resultForm.ShowIcon = true;
 
             resultForm.ConnectionString = BuildConnectionString("master");
-            resultForm.CommandText = QueryHelper.Query(QueryHelper.QueryId.Deadlocks);
+            resultForm.CommandText = String.Format(QueryHelper.Query(QueryHelper.QueryId.Deadlocks), hasMsdb, hasNotMsdb);
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
             resultForm.ExportColumn = "process_code";

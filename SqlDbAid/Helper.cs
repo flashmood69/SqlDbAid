@@ -45,7 +45,9 @@ namespace SqlDbAid
             GuiObjType,
             GuiObjCode,
 
-            RunnableCheck,
+            HasXeSessions,
+            HasMSDB,
+			RunnableCheck,
             FeatureTest,
 
             MissingFkIndexes,
@@ -164,8 +166,6 @@ WHERE
 	@index IN ('Y', 'N') AND
 	@contains = ''
 */
---SQL Approach - 2008-09-16; 2020-05-22
---ScriptSqlObjects by Miken
 --DECLARE @type VARCHAR(50)
 --DECLARE @index VARCHAR(1)
 --DECLARE @contains NVARCHAR(200)
@@ -393,7 +393,7 @@ BEGIN
 				'' cl_identity,
 				'' cl_null,
 				'' cl_computed,
-				'CONSTRAINT ' + QUOTENAME(CC.name) + ' CHECK ' + CC.definition cl_constraint,
+				'CONSTRAINT ' + QUOTENAME(CC.name) + ' CHECK ' + CC.definition COLLATE DATABASE_DEFAULT cl_constraint,
 				8000 column_id,
 				TB.object_id
 			FROM
@@ -682,7 +682,7 @@ SELECT
 	obj_schema,
 	obj_name,
 	modify_date,
-	code,
+	code COLLATE DATABASE_DEFAULT code,
 	CONVERT(INT, ROW_NUMBER() OVER (ORDER BY X.grp_id, X.ord_id)) ord_id
 FROM
 	(
@@ -768,7 +768,7 @@ FROM
 WHERE
 	CASE
 		WHEN @contains = '' THEN 1
-		WHEN code LIKE '%' + @contains + '%' THEN 1
+		WHEN code LIKE '%' + @contains + '%' COLLATE DATABASE_DEFAULT THEN 1
 		ELSE 0
 	END = 1
 ORDER BY
@@ -1107,6 +1107,20 @@ WHERE
     TB.name = @name
 ORDER BY
 	CL.column_id
+/*sda*/
+";
+            }
+            else if (queryId == QueryId.HasXeSessions)
+            {
+                return @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+SELECT TOP 1 has_xe_sessions = 1 FROM sys.dm_xe_sessions
+/*sda*/
+";
+            }
+            else if (queryId == QueryId.HasMSDB)
+            {
+                return @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+SELECT TOP 1 has_msdb = 1 FROM msdb..sysjobs
 /*sda*/
 ";
             }
@@ -1610,7 +1624,7 @@ SELECT
 		2,
 		4096
 	) + ')'
-	{0}+ CASE s.has_filter WHEN 1 THEN ' WHERE ' + s.filter_definition ELSE '' END
+	{0}+ CASE s.has_filter WHEN 1 THEN ' WHERE ' + s.filter_definition ELSE '' END COLLATE DATABASE_DEFAULT
 	script
 FROM
 	sys.tables t
@@ -2058,10 +2072,8 @@ FROM
 		SELECT TOP 1
 			[program_name] = 'SQLAgent - TSQL JobStep (Job [' + j.name + '] - ' + SUBSTRING(ES.[program_name], 67, 500)
 		FROM
-			msdb..sysjobs j
-		WHERE
-			ES.[program_name] LIKE '%' + sys.fn_varbintohexstr(j.job_id) + '%' AND
-			ES.[program_name] LIKE 'SQLAgent - TSQL JobStep (Job 0x%)'
+			{3}msdb..sysjobs j WHERE ES.[program_name] LIKE '%' + sys.fn_varbintohexstr(j.job_id) + '%' AND ES.[program_name] LIKE 'SQLAgent - TSQL JobStep (Job 0x%)'
+			{4}(SELECT [program_name] = NULL, [name] = NULL) j
 	) JN
 WHERE
 	SP.RN = 1
@@ -2370,7 +2382,8 @@ FROM
 		SELECT TOP 1
 			client_app = 'SQLAgent - TSQL JobStep (Job [' + j.name + '] - ' + SUBSTRING(dl.client_app, 67, 500)
 		FROM
-			msdb..sysjobs j
+			{0}msdb..sysjobs j
+			{1}(SELECT job_id = NULL, name = NULL) j
 		WHERE
 			dl.client_app LIKE '%' + sys.fn_varbintohexstr(j.job_id) + '%' AND
 			dl.client_app LIKE 'SQLAgent - TSQL JobStep (Job 0x%)'

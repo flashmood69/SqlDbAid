@@ -1,5 +1,9 @@
 # SqlDbAid Changelog
 
+## [v2.6.4.0]
+- Fixed collation handling in the "Processes" Report and "Table Satistics" Report.
+- Disabled "Deadlocks" Report on Azure SQL.
+
 ## [v2.6.3.0]
 - First open source release.
 - .NET Framework upgraded to 4.8.
