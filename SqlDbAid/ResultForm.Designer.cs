@@ -58,6 +58,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
             this.datagridMenu.SuspendLayout();
             this.resultStatusStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitMain)).BeginInit();
             this.splitMain.Panel1.SuspendLayout();
             this.splitMain.Panel2.SuspendLayout();
             this.splitMain.SuspendLayout();
@@ -94,7 +95,7 @@
             this.copyWithHeadersToolStripMenuItem,
             this.viewCodeToolStripMenuItem});
             this.datagridMenu.Name = "datagridMenu";
-            this.datagridMenu.Size = new System.Drawing.Size(175, 92);
+            this.datagridMenu.Size = new System.Drawing.Size(175, 70);
             // 
             // copyToolStripMenuItem
             // 
@@ -341,6 +342,7 @@
             this.Controls.Add(this.btnAbort);
             this.Controls.Add(this.btnExport);
             this.Controls.Add(this.btnRun);
+            this.DoubleBuffered = true;
             this.MainMenuStrip = this.mainMenu;
             this.MinimumSize = new System.Drawing.Size(350, 250);
             this.Name = "ResultForm";
@@ -357,6 +359,7 @@
             this.resultStatusStrip.PerformLayout();
             this.splitMain.Panel1.ResumeLayout(false);
             this.splitMain.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitMain)).EndInit();
             this.splitMain.ResumeLayout(false);
             this.tabQuery.ResumeLayout(false);
             this.tpgQuery.ResumeLayout(false);

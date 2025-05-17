@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -8,591 +8,723 @@ namespace SqlDbAid
 {
     class SqlHighlighter
     {
-        private Hashtable mKW = new Hashtable();
+        private Dictionary<string, Color> mKW;
+
+        private static readonly Color COL_OPERATOR = Color.Gray;
+        private static readonly Color COL_TYPE = Color.BlueViolet;
+        private static readonly Color COL_KEYWORD = Color.Blue;
+        private static readonly Color COL_VARFUN = Color.Magenta;
+        private static readonly Color COL_COMMENT = Color.Green;
+        private static readonly Color COL_STRING = Color.Red;
+        private static readonly Color COL_NORMAL = Color.Black;
 
         public SqlHighlighter()
         {
-            mKW.Add("@@CONNECTIONS", "K4");
-            mKW.Add("@@CPU_BUSY", "K4");
-            mKW.Add("@@CURSOR_ROWS", "K4");
-            mKW.Add("@@DATEFIRST", "K4");
-            mKW.Add("@@DBTS", "K4");
-            mKW.Add("@@ERROR", "K4");
-            mKW.Add("@@FETCH_STATUS", "K4");
-            mKW.Add("@@IDENTITY", "K4");
-            mKW.Add("@@IDLE", "K4");
-            mKW.Add("@@IO_BUSY", "K4");
-            mKW.Add("@@LANGID", "K4");
-            mKW.Add("@@LANGUAGE", "K4");
-            mKW.Add("@@LOCK_TIMEOUT", "K4");
-            mKW.Add("@@MAX_CONNECTIONS", "K4");
-            mKW.Add("@@MAX_PRECISION", "K4");
-            mKW.Add("@@NESTLEVEL", "K4");
-            mKW.Add("@@OPTIONS", "K4");
-            mKW.Add("@@PACK_RECEIVED", "K4");
-            mKW.Add("@@PACK_SENT", "K4");
-            mKW.Add("@@PACKET_ERRORS", "K4");
-            mKW.Add("@@PROCID", "K4");
-            mKW.Add("@@REMSERVER", "K4");
-            mKW.Add("@@ROWCOUNT", "K4");
-            mKW.Add("@@SERVERNAME", "K4");
-            mKW.Add("@@SERVICENAME", "K4");
-            mKW.Add("@@SPID", "K4");
-            mKW.Add("@@TEXTSIZE", "K4");
-            mKW.Add("@@TIMETICKS", "K4");
-            mKW.Add("@@TOTAL_ERRORS", "K4");
-            mKW.Add("@@TOTAL_READ", "K4");
-            mKW.Add("@@TOTAL_WRITE", "K4");
-            mKW.Add("@@TRANCOUNT", "K4");
-            mKW.Add("@@VERSION", "K4");
-            mKW.Add("ABS", "K4");
-            mKW.Add("ACOS", "K4");
-            mKW.Add("ADD", "K3");
-            mKW.Add("AFTER", "K3");
-            mKW.Add("ALL", "K1");
-            mKW.Add("ALTER", "K3");
-            mKW.Add("AND", "K1");
-            mKW.Add("ANSI_DEFAULTS", "K3");
-            mKW.Add("ANSI_NULL_DFLT_OFF", "K3");
-            mKW.Add("ANSI_NULL_DFLT_ON", "K3");
-            mKW.Add("ANSI_NULLS", "K3");
-            mKW.Add("ANSI_PADDING", "K3");
-            mKW.Add("ANSI_WARNINGS", "K3");
-            mKW.Add("ANY", "K1");
-            mKW.Add("APP_NAME", "K4");
-            mKW.Add("APPLOCK_MODE", "K4");
-            mKW.Add("APPLOCK_TEST", "K4");
-            mKW.Add("APPLY", "K1");
-            mKW.Add("ARITHABORT", "K3");
-            mKW.Add("ARITHIGNORE", "K3");
-            mKW.Add("AS", "K3");
-            mKW.Add("ASC", "K3");
-            mKW.Add("ASCII", "K4");
-            mKW.Add("ASIN", "K4");
-            mKW.Add("ASSEMBLYPROPERTY", "K4");
-            mKW.Add("ASYMKEY_ID", "K4");
-            mKW.Add("ASYMKEYPROPERTY", "K4");
-            mKW.Add("AT", "K3");
-            mKW.Add("ATAN", "K4");
-            mKW.Add("ATN2", "K4");
-            mKW.Add("AUTHORIZATION", "K3");
-            mKW.Add("AVG", "K4");
-            mKW.Add("BACKUP", "K3");
-            mKW.Add("BEGIN", "K3");
-            mKW.Add("BETWEEN", "K1");
-            mKW.Add("BIGINT", "K2");
-            mKW.Add("BINARY", "K2");
-            mKW.Add("BINARY_CHECKSUM", "K4");
-            mKW.Add("BIT", "K2");
-            mKW.Add("BREAK", "K3");
-            mKW.Add("BROWSE", "K3");
-            mKW.Add("BULK", "K3");
-            mKW.Add("BY", "K3");
-            mKW.Add("CASCADE", "K3");
-            mKW.Add("CASE", "K3");
-            mKW.Add("CAST", "K4");
-            mKW.Add("CATCH", "K3");
-            mKW.Add("CEILING", "K4");
-            mKW.Add("Cert_ID", "K4");
-            mKW.Add("CERTIFICATE", "K3");
-            mKW.Add("CertProperty", "K4");
-            mKW.Add("CHAR", "K2");
-            mKW.Add("CHARINDEX", "K4");
-            mKW.Add("CHECK", "K3");
-            mKW.Add("CHECKCONSTRAINTS", "K3");
-            mKW.Add("CHECKPOINT", "K3");
-            mKW.Add("CHECKSUM", "K4");
-            mKW.Add("CHECKSUM_AGG", "K4");
-            mKW.Add("CLOSE", "K3");
-            mKW.Add("CLUSTERED", "K3");
-            mKW.Add("COALESCE", "K4");
-            mKW.Add("COL_LENGTH", "K4");
-            mKW.Add("COL_NAME", "K4");
-            mKW.Add("COLLATE", "K3");
-            mKW.Add("COLLATIONPROPERTY", "K4");
-            mKW.Add("COLUMN", "K3");
-            mKW.Add("COLUMNPROPERTY", "K4");
-            mKW.Add("COLUMNS_UPDATED", "K4");
-            mKW.Add("COLUMNSTORE", "K3");
-            mKW.Add("COMMIT", "K3");
-            mKW.Add("COMMITTED", "K3");
-            mKW.Add("COMPRESS", "K4");
-            mKW.Add("COMPUTE", "K3");
-            mKW.Add("CONCAT", "K3");
-            mKW.Add("CONCAT_NULL_YIELDS_NULL", "K3");
-            mKW.Add("CONNECTIONPROPERTY", "K4");
-            mKW.Add("CONSTRAINT", "K3");
-            mKW.Add("CONTAINS", "K3");
-            mKW.Add("CONTAINSTABLE", "K3");
-            mKW.Add("CONTEXT_INFO", "K3");
-            mKW.Add("CONTINUE", "K3");
-            mKW.Add("CONVERSATION", "K3");
-            mKW.Add("CONVERT", "K4");
-            mKW.Add("COS", "K4");
-            mKW.Add("COT", "K4");
-            mKW.Add("COUNT", "K4");
-            mKW.Add("COUNT_BIG", "K4");
-            mKW.Add("CREATE", "K3");
-            mKW.Add("CROSS", "K1");
-            mKW.Add("CUME_DIST", "K4");
-            mKW.Add("CURRENT", "K3");
-            mKW.Add("CURRENT_DATE", "K3");
-            mKW.Add("CURRENT_REQUEST_ID", "K4");
-            mKW.Add("CURRENT_TIME", "K3");
-            mKW.Add("CURRENT_TIMESTAMP", "K4");
-            mKW.Add("CURRENT_TRANSACTION_ID", "K4");
-            mKW.Add("CURRENT_USER", "K4");
-            mKW.Add("CURSOR", "K3");
-            mKW.Add("CURSOR_CLOSE_ON_COMMIT", "K3");
-            mKW.Add("CURSOR_STATUS", "K4");
-            mKW.Add("DATABASE", "K3");
-            mKW.Add("DATABASE_PRINCIPAL_ID", "K4");
-            mKW.Add("DATABASEPROPERTY", "K4");
-            mKW.Add("DATABASEPROPERTYEX", "K4");
-            mKW.Add("DATALENGTH", "K4");
-            mKW.Add("DATE", "K2");
-            mKW.Add("DATEADD", "K4");
-            mKW.Add("DATEDIFF", "K4");
-            mKW.Add("DATEFIRST", "K3");
-            mKW.Add("DATEFORMAT", "K3");
-            mKW.Add("DATENAME", "K4");
-            mKW.Add("DATEPART", "K4");
-            mKW.Add("DATETIME", "K2");
-            mKW.Add("DATETIME2", "K2");
-            mKW.Add("DATETIMEOFFSET", "K2");
-            mKW.Add("DAY", "K4");
-            mKW.Add("DB_ID", "K4");
-            mKW.Add("DB_NAME", "K4");
-            mKW.Add("DBCC", "K3");
-            mKW.Add("DEADLOCK_PRIORITY", "K3");
-            mKW.Add("DEALLOCATE", "K3");
-            mKW.Add("DECIMAL", "K2");
-            mKW.Add("DECLARE", "K3");
-            mKW.Add("DECOMPRESS", "K4");
-            mKW.Add("DECRYPTBYCERT", "K4");
-            mKW.Add("DECRYPTBYKEY", "K4");
-            mKW.Add("DECRYPTBYKEYAUTOCERT", "K4");
-            mKW.Add("DECRYPTBYPASSPHRASE", "K4");
-            mKW.Add("DEFAULT", "K3");
-            mKW.Add("DEGREES", "K4");
-            mKW.Add("DELAY", "K3");
-            mKW.Add("DELETE", "K3");
-            mKW.Add("DENSE_RANK", "K4");
-            mKW.Add("DENY", "K3");
-            mKW.Add("DESC", "K3");
-            mKW.Add("DIFFERENCE", "K4");
-            mKW.Add("DISABLE", "K3");
-            mKW.Add("DISABLE_DEF_CNST_CHK", "K3");
-            mKW.Add("DISK", "K3");
-            mKW.Add("DISTINCT", "K3");
-            mKW.Add("DISTRIBUTED", "K3");
-            mKW.Add("DOUBLE", "K3");
-            mKW.Add("DROP", "K3");
-            mKW.Add("DUMP", "K3");
-            mKW.Add("ELSE", "K3");
-            mKW.Add("ENABLE", "K3");
-            mKW.Add("ENCRYPTBYCERT", "K4");
-            mKW.Add("ENCRYPTBYKEY", "K4");
-            mKW.Add("ENCRYPTBYPASSPHRASE", "K4");
-            mKW.Add("END", "K3");
-            mKW.Add("ERRLVL", "K3");
-            mKW.Add("ERROR_LINE", "K4");
-            mKW.Add("ERROR_MESSAGE", "K4");
-            mKW.Add("ERROR_NUMBER", "K4");
-            mKW.Add("ERROR_PROCEDURE", "K4");
-            mKW.Add("ERROR_SEVERITY", "K4");
-            mKW.Add("ERROR_STATE", "K4");
-            mKW.Add("ESCAPE", "K3");
-            mKW.Add("EVENTDATA", "K4");
-            mKW.Add("EXCEPT", "K3");
-            mKW.Add("EXEC", "K3");
-            mKW.Add("EXECUTE", "K3");
-            mKW.Add("EXISTS", "K1");
-            mKW.Add("EXIT", "K3");
-            mKW.Add("EXP", "K4");
-            mKW.Add("EXPAND", "K3");
-            mKW.Add("EXTERNAL", "K3");
-            mKW.Add("FAST", "K3");
-            mKW.Add("FASTFIRSTROW", "K3");
-            mKW.Add("FETCH", "K3");
-            mKW.Add("FILE", "K3");
-            mKW.Add("FILE_ID", "K4");
-            mKW.Add("FILE_IDEX", "K4");
-            mKW.Add("FILE_NAME", "K4");
-            mKW.Add("FILEGROUP_ID", "K4");
-            mKW.Add("FILEGROUP_NAME", "K4");
-            mKW.Add("FILEGROUPPROPERTY", "K4");
-            mKW.Add("FILEPROPERTY", "K4");
-            mKW.Add("FILLFACTOR", "K3");
-            mKW.Add("FIPS_FLAGGER", "K3");
-            mKW.Add("FIRST_VALUE", "K4");
-            mKW.Add("FLOAT", "K2");
-            mKW.Add("FLOOR", "K4");
-            mKW.Add("FMTONLY", "K3");
-            mKW.Add("FOR", "K3");
-            mKW.Add("FORCE", "K3");
-            mKW.Add("FORCED", "K3");
-            mKW.Add("FORCEPLAN", "K3");
-            mKW.Add("FOREIGN", "K3");
-            mKW.Add("FORMATMESSAGE", "K4");
-            mKW.Add("FREETEXT", "K3");
-            mKW.Add("FREETEXTTABLE", "K3");
-            mKW.Add("FROM", "K3");
-            mKW.Add("FULL", "K3");
-            mKW.Add("FULLTEXTCATALOGPROPERTY", "K4");
-            mKW.Add("FULLTEXTSERVICEPROPERTY", "K4");
-            mKW.Add("FUNCTION", "K3");
-            mKW.Add("GEOGRAPHY", "K2");
-            mKW.Add("GEOMETRY", "K2");
-            mKW.Add("GET", "K3");
-            mKW.Add("GET_TRANSMISSION_STATUS", "K4");
-            mKW.Add("GETANSINULL", "K4");
-            mKW.Add("GETDATE", "K4");
-            mKW.Add("GETUTCDATE", "K4");
-            mKW.Add("GO", "K3");
-            mKW.Add("GOTO", "K3");
-            mKW.Add("GRANT", "K3");
-            mKW.Add("GROUP", "K3");
-            mKW.Add("GROUPING", "K4");
-            mKW.Add("GROUPING_ID", "K4");
-            mKW.Add("HAS_DBACCESS", "K4");
-            mKW.Add("HAS_PERMS_BY_NAME", "K4");
-            mKW.Add("HASH", "K3");
-            mKW.Add("HASHBYTES", "K4");
-            mKW.Add("HAVING", "K3");
-            mKW.Add("HIERARCHYID", "K2");
-            mKW.Add("HOLDLOCK", "K3");
-            mKW.Add("HOST_ID", "K4");
-            mKW.Add("HOST_NAME", "K4");
-            mKW.Add("IDENT_CURRENT", "K4");
-            mKW.Add("IDENT_INCR", "K4");
-            mKW.Add("IDENT_SEED", "K4");
-            mKW.Add("IDENTITY", "K3");
-            mKW.Add("IDENTITY_INSERT", "K3");
-            mKW.Add("IDENTITYCOL", "K3");
-            mKW.Add("IF", "K3");
-            mKW.Add("IGNORE_CONSTRAINTS", "K3");
-            mKW.Add("IGNORE_DUP_KEY", "K3");
-            mKW.Add("IGNORE_TRIGGERS", "K3");
-            mKW.Add("IMAGE", "K2");
-            mKW.Add("IMPLICIT_TRANSACTIONS", "K3");
-            mKW.Add("IN", "K1");
-            mKW.Add("INCLUDE", "K3");
-            mKW.Add("INDEX", "K3");
-            mKW.Add("INDEX_COL", "K4");
-            mKW.Add("INDEXKEY_PROPERTY", "K4");
-            mKW.Add("INDEXPROPERTY", "K4");
-            mKW.Add("INNER", "K1");
-            mKW.Add("INSERT", "K3");
-            mKW.Add("INSTEAD", "K3");
-            mKW.Add("INT", "K2");
-            mKW.Add("INTERSECT", "K3");
-            mKW.Add("INTO", "K3");
-            mKW.Add("IO", "K3");
-            mKW.Add("IS", "K1");
-            mKW.Add("IS_MEMBER", "K4");
-            mKW.Add("IS_OBJECTSIGNED", "K4");
-            mKW.Add("IS_SRVROLEMEMBER", "K4");
-            mKW.Add("ISDATE", "K4");
-            mKW.Add("ISJSON", "K4");
-            mKW.Add("ISNULL", "K4");
-            mKW.Add("ISNUMERIC", "K4");
-            mKW.Add("ISOLATION", "K3");
-            mKW.Add("JOIN", "K1");
-            mKW.Add("JSON", "K3");
-            mKW.Add("JSON_MODIFY", "K4");
-            mKW.Add("JSON_QUERY", "K4");
-            mKW.Add("JSON_VALUE", "K4");
-            mKW.Add("KEEP", "K3");
-            mKW.Add("KEEPDEFAULTS", "K3");
-            mKW.Add("KEEPFIXED", "K3");
-            mKW.Add("KEEPIDENTITY", "K3");
-            mKW.Add("KEY", "K3");
-            mKW.Add("Key_GUID", "K4");
-            mKW.Add("Key_ID", "K4");
-            mKW.Add("KILL", "K3");
-            mKW.Add("LAG", "K4");
-            mKW.Add("LANGUAGE", "K3");
-            mKW.Add("LAST_VALUE", "K4");
-            mKW.Add("LEAD", "K4");
-            mKW.Add("LEFT", "K1");
-            mKW.Add("LEN", "K4");
-            mKW.Add("LEVEL", "K3");
-            mKW.Add("LIKE", "K1");
-            mKW.Add("LINENO", "K3");
-            mKW.Add("LOAD", "K3");
-            mKW.Add("LOCK_TIMEOUT", "K3");
-            mKW.Add("LOG", "K4");
-            mKW.Add("LOG10", "K4");
-            mKW.Add("LOGINPROPERTY", "K4");
-            mKW.Add("LOOP", "K3");
-            mKW.Add("LOWER", "K4");
-            mKW.Add("LTRIM", "K4");
-            mKW.Add("MASTER", "K3");
-            mKW.Add("MATCHED", "K1");
-            mKW.Add("MAX", "K4");
-            mKW.Add("MAXDOP", "K3");
-            mKW.Add("MERGE", "K3");
-            mKW.Add("MIN", "K4");
-            mKW.Add("MIN_ACTIVE_ROWVERSION", "K4");
-            mKW.Add("MONEY", "K2");
-            mKW.Add("MONTH", "K4");
-            mKW.Add("MOVE", "K3");
-            mKW.Add("NATIONAL", "K3");
-            mKW.Add("NCHAR", "K2");
-            mKW.Add("NEWID", "K4");
-            mKW.Add("NEWSEQUENTIALID", "K4");
-            mKW.Add("NEXT", "K3");
-            mKW.Add("NOCHECK", "K3");
-            mKW.Add("NOCOUNT", "K3");
-            mKW.Add("NOEXEC", "K3");
-            mKW.Add("NOEXPAND", "K3");
-            mKW.Add("NOLOCK", "K3");
-            mKW.Add("NONCLUSTERED", "K3");
-            mKW.Add("NOT", "K1");
-            mKW.Add("NOTIFICATION", "K3");
-            mKW.Add("NOWAIT", "K3");
-            mKW.Add("NTEXT", "K2");
-            mKW.Add("NTILE", "K4");
-            mKW.Add("NULL", "K1");
-            mKW.Add("NULLIF", "K4");
-            mKW.Add("NUMERIC", "K2");
-            mKW.Add("NUMERIC_ROUNDABORT", "K3");
-            mKW.Add("NVARCHAR", "K2");
-            mKW.Add("OBJECT_DEFINITION", "K4");
-            mKW.Add("OBJECT_ID", "K4");
-            mKW.Add("OBJECT_NAME", "K4");
-            mKW.Add("OBJECT_SCHEMA_NAME", "K4");
-            mKW.Add("OBJECTPROPERTY", "K4");
-            mKW.Add("OBJECTPROPERTYEX", "K4");
-            mKW.Add("OF", "K3");
-            mKW.Add("OFF", "K3");
-            mKW.Add("OFFSET", "K3");
-            mKW.Add("OFFSETS", "K3");
-            mKW.Add("ON", "K3");
-            mKW.Add("OPEN", "K3");
-            mKW.Add("OPENDATASOURCE", "K3");
-            mKW.Add("OPENJSON", "K4");
-            mKW.Add("OPENQUERY", "K3");
-            mKW.Add("OPENROWSET", "K3");
-            mKW.Add("OPENXML", "K3");
-            mKW.Add("OPTION", "K3");
-            mKW.Add("OR", "K1");
-            mKW.Add("ORDER", "K3");
-            mKW.Add("ORIGINAL_DB_NAME", "K4");
-            mKW.Add("ORIGINAL_LOGIN", "K4");
-            mKW.Add("OUT", "K3");
-            mKW.Add("OUTER", "K1");
-            mKW.Add("OUTPUT", "K3");
-            mKW.Add("OVER", "K3");
-            mKW.Add("PAD_INDEX", "K3");
-            mKW.Add("PAGLOCK", "K3");
-            mKW.Add("PARAMETERIZATION", "K3");
-            mKW.Add("PARSENAME", "K4");
-            mKW.Add("PARSEONLY", "K3");
-            mKW.Add("PARTITION", "K3");
-            mKW.Add("PATINDEX", "K4");
-            mKW.Add("PERCENT", "K3");
-            mKW.Add("PERCENT_RANK", "K4");
-            mKW.Add("PERCENTILE_CONT", "K4");
-            mKW.Add("PERCENTILE_DISC", "K4");
-            mKW.Add("PERMISSIONS", "K4");
-            mKW.Add("PI", "K4");
-            mKW.Add("PIVOT", "K1");
-            mKW.Add("PLAN", "K3");
-            mKW.Add("POWER", "K4");
-            mKW.Add("PRECISION", "K3");
-            mKW.Add("PRIMARY", "K3");
-            mKW.Add("PRINT", "K3");
-            mKW.Add("PROC", "K3");
-            mKW.Add("PROCEDURE", "K3");
-            mKW.Add("PROFILE", "K3");
-            mKW.Add("PUBLIC", "K3");
-            mKW.Add("PUBLISHINGSERVERNAME", "K4");
-            mKW.Add("PWDCOMPARE", "K4");
-            mKW.Add("PWDENCRYPT", "K4");
-            mKW.Add("QUERY_GOVERNOR_COST_LIMIT", "K3");
-            mKW.Add("QUOTED_IDENTIFIER", "K3");
-            mKW.Add("QUOTENAME", "K4");
-            mKW.Add("RADIANS", "K4");
-            mKW.Add("RAISERROR", "K3");
-            mKW.Add("RAND", "K4");
-            mKW.Add("RANK", "K4");
-            mKW.Add("READ", "K3");
-            mKW.Add("READCOMMITTED", "K3");
-            mKW.Add("READCOMMITTEDLOCK", "K3");
-            mKW.Add("READPAST", "K3");
-            mKW.Add("READTEXT", "K3");
-            mKW.Add("READUNCOMMITTED", "K3");
-            mKW.Add("REAL", "K2");
-            mKW.Add("RECEIVE", "K3");
-            mKW.Add("RECOMPILE", "K3");
-            mKW.Add("RECONFIGURE", "K3");
-            mKW.Add("REFERENCES", "K3");
-            mKW.Add("REMOTE_PROC_TRANSACTIONS", "K3");
-            mKW.Add("REORGANIZE", "K3");
-            mKW.Add("REPEATABLE", "K3");
-            mKW.Add("REPEATABLEREAD", "K3");
-            mKW.Add("REPLACE", "K4");
-            mKW.Add("REPLICATE", "K4");
-            mKW.Add("REPLICATION", "K3");
-            mKW.Add("RESTORE", "K3");
-            mKW.Add("RESTRICT", "K3");
-            mKW.Add("RETURN", "K3");
-            mKW.Add("RETURNS", "K3");
-            mKW.Add("REVERSE", "K4");
-            mKW.Add("REVERT", "K3");
-            mKW.Add("REVOKE", "K3");
-            mKW.Add("RIGHT", "K1");
-            mKW.Add("ROBUST", "K3");
-            mKW.Add("ROLLBACK", "K3");
-            mKW.Add("ROUND", "K4");
-            mKW.Add("ROW_NUMBER", "K4");
-            mKW.Add("ROWCOUNT", "K3");
-            mKW.Add("ROWCOUNT_BIG", "K3");
-            mKW.Add("ROWGUIDCOL", "K3");
-            mKW.Add("ROWLOCK", "K3");
-            mKW.Add("RTRIM", "K4");
-            mKW.Add("RULE", "K3");
-            mKW.Add("SAVE", "K3");
-            mKW.Add("SCHEMA", "K3");
-            mKW.Add("SCHEMA_ID", "K4");
-            mKW.Add("SCHEMA_NAME", "K4");
-            mKW.Add("SCOPE_IDENTITY", "K4");
-            mKW.Add("SECURITYAUDIT", "K3");
-            mKW.Add("SELECT", "K3");
-            mKW.Add("SEND", "K3");
-            mKW.Add("SERIALIZABLE", "K3");
-            mKW.Add("SERVERPROPERTY", "K4");
-            mKW.Add("SERVICE", "K3");
-            mKW.Add("SESSION_CONTEXT", "K4");
-            mKW.Add("SESSION_USER", "K4");
-            mKW.Add("SESSIONPROPERTY", "K4");
-            mKW.Add("SET", "K3");
-            mKW.Add("SETUSER", "K3");
-            mKW.Add("SHOW_STATISTICS", "K3");
-            mKW.Add("SHOWPLAN_ALL", "K3");
-            mKW.Add("SHOWPLAN_TEXT", "K3");
-            mKW.Add("SHUTDOWN", "K3");
-            mKW.Add("SIGN", "K4");
-            mKW.Add("SIGNATURE", "K3");
-            mKW.Add("SignByAsymKey", "K4");
-            mKW.Add("SignByCert", "K4");
-            mKW.Add("SIMPLE", "K3");
-            mKW.Add("SIN", "K4");
-            mKW.Add("SMALLDATETIME", "K2");
-            mKW.Add("SMALLINT", "K2");
-            mKW.Add("SMALLMONEY", "K2");
-            mKW.Add("SOME", "K1");
-            mKW.Add("SOUNDEX", "K4");
-            mKW.Add("SOURCE", "K1");
-            mKW.Add("SPACE", "K4");
-            mKW.Add("SQL_VARIANT", "K2");
-            mKW.Add("SQL_VARIANT_PROPERTY", "K4");
-            mKW.Add("SQRT", "K4");
-            mKW.Add("SQUARE", "K4");
-            mKW.Add("STATISTICS", "K3");
-            mKW.Add("STATS_DATE", "K4");
-            mKW.Add("STDEV", "K4");
-            mKW.Add("STDEVP", "K4");
-            mKW.Add("STR", "K4");
-            mKW.Add("STRING_AGG", "K4");
-            mKW.Add("STRING_SPLIT", "K4");
-            mKW.Add("STUFF", "K4");
-            mKW.Add("SUBSTRING", "K4");
-            mKW.Add("SUM", "K4");
-            mKW.Add("SUSER_ID", "K4");
-            mKW.Add("SUSER_NAME", "K4");
-            mKW.Add("SUSER_SID", "K4");
-            mKW.Add("SUSER_SNAME", "K4");
-            mKW.Add("SWITCHOFFSET", "K4");
-            mKW.Add("SYMMETRIC", "K3");
-            mKW.Add("SYNONYM", "K3");
-            mKW.Add("SYSDATETIME", "K4");
-            mKW.Add("SYSDATETIMEOFFSET", "K4");
-            mKW.Add("SYSNAME", "K2");
-            mKW.Add("SYSTEM_USER", "K4");
-            mKW.Add("SYSUTCDATETIME", "K4");
-            mKW.Add("TABLE", "K3");
-            mKW.Add("TABLESAMPLE", "K3");
-            mKW.Add("TABLOCK", "K3");
-            mKW.Add("TABLOCKX", "K3");
-            mKW.Add("TAN", "K4");
-            mKW.Add("TAPE", "K3");
-            mKW.Add("TARGET", "K3");
-            mKW.Add("TERTIARY_WEIGHTS", "K4");
-            mKW.Add("TEXT", "K2");
-            mKW.Add("TEXTPTR", "K4");
-            mKW.Add("TEXTSIZE", "K3");
-            mKW.Add("TEXTVALID", "K4");
-            mKW.Add("THEN", "K3");
-            mKW.Add("THROW", "K3");
-            mKW.Add("TIME", "K2");
-            mKW.Add("TIMESTAMP", "K2");
-            mKW.Add("TINYINT", "K2");
-            mKW.Add("TO", "K3");
-            mKW.Add("TODATETIMEOFFSET", "K4");
-            mKW.Add("TOP", "K3");
-            mKW.Add("TRAN", "K3");
-            mKW.Add("TRANSACTION", "K3");
-            mKW.Add("TRANSLATE", "K4");
-            mKW.Add("TRIGGER", "K3");
-            mKW.Add("TRIGGER_NESTLEVEL", "K4");
-            mKW.Add("TRIM", "K4");
-            mKW.Add("TRUNCATE", "K3");
-            mKW.Add("TRY", "K3");
-            mKW.Add("TRY_CONVERT", "K4");
-            mKW.Add("TRY_PARSE", "K4");
-            mKW.Add("TSEQUAL", "K3");
-            mKW.Add("TYPE", "K3");
-            mKW.Add("TYPE_ID", "K4");
-            mKW.Add("TYPE_NAME", "K4");
-            mKW.Add("TYPEPROPERTY", "K4");
-            mKW.Add("UNCOMMITTED", "K3");
-            mKW.Add("UNICODE", "K4");
-            mKW.Add("UNION", "K3");
-            mKW.Add("UNIQUE", "K3");
-            mKW.Add("UNIQUEIDENTIFIER", "K2");
-            mKW.Add("UNPIVOT", "K1");
-            mKW.Add("UPDATE", "K3");
-            mKW.Add("UPDATETEXT", "K3");
-            mKW.Add("UPDLOCK", "K3");
-            mKW.Add("UPPER", "K4");
-            mKW.Add("USE", "K3");
-            mKW.Add("USER", "K4");
-            mKW.Add("USER_ID", "K4");
-            mKW.Add("USER_NAME", "K4");
-            mKW.Add("USEROPTIONS", "K3");
-            mKW.Add("USING", "K3");
-            mKW.Add("VALUES", "K3");
-            mKW.Add("VAR", "K4");
-            mKW.Add("VARBINARY", "K2");
-            mKW.Add("VARCHAR", "K2");
-            mKW.Add("VARP", "K4");
-            mKW.Add("VARYING", "K3");
-            mKW.Add("VerifySignedByCert", "K4");
-            mKW.Add("VIEW", "K3");
-            mKW.Add("WAITFOR", "K3");
-            mKW.Add("WHEN", "K3");
-            mKW.Add("WHERE", "K3");
-            mKW.Add("WHILE", "K3");
-            mKW.Add("WITH", "K3");
-            mKW.Add("WITHIN GROUP", "K3");
-            mKW.Add("WRITETEXT", "K3");
-            mKW.Add("XACT_ABORT", "K3");
-            mKW.Add("XACT_STATE", "K4");
-            mKW.Add("XLOCK", "K3");
-            mKW.Add("XML", "K3");
-            mKW.Add("xml_schema_namespace", "K4");
-            mKW.Add("YEAR", "K4");
+            mKW = new Dictionary<string, Color>
+            {
+                // Variables / Functions
+                { "@@CONNECTIONS", COL_VARFUN },
+                { "@@CPU_BUSY", COL_VARFUN },
+                { "@@CURSOR_ROWS", COL_VARFUN },
+                { "@@DATEFIRST", COL_VARFUN },
+                { "@@DBTS", COL_VARFUN },
+                { "@@ERROR", COL_VARFUN },
+                { "@@FETCH_STATUS", COL_VARFUN },
+                { "@@IDENTITY", COL_VARFUN },
+                { "@@IDLE", COL_VARFUN },
+                { "@@IO_BUSY", COL_VARFUN },
+                { "@@LANGID", COL_VARFUN },
+                { "@@LANGUAGE", COL_VARFUN },
+                { "@@LOCK_TIMEOUT", COL_VARFUN },
+                { "@@MAX_CONNECTIONS", COL_VARFUN },
+                { "@@MAX_PRECISION", COL_VARFUN },
+                { "@@NESTLEVEL", COL_VARFUN },
+                { "@@OPTIONS", COL_VARFUN },
+                { "@@PACK_RECEIVED", COL_VARFUN },
+                { "@@PACK_SENT", COL_VARFUN },
+                { "@@PACKET_ERRORS", COL_VARFUN },
+                { "@@PROCID", COL_VARFUN },
+                { "@@REMSERVER", COL_VARFUN },
+                { "@@ROWCOUNT", COL_VARFUN },
+                { "@@SERVERNAME", COL_VARFUN },
+                { "@@SERVICENAME", COL_VARFUN },
+                { "@@SPID", COL_VARFUN },
+                { "@@TEXTSIZE", COL_VARFUN },
+                { "@@TIMETICKS", COL_VARFUN },
+                { "@@TOTAL_ERRORS", COL_VARFUN },
+                { "@@TOTAL_READ", COL_VARFUN },
+                { "@@TOTAL_WRITE", COL_VARFUN },
+                { "@@TRANCOUNT", COL_VARFUN },
+                { "@@VERSION", COL_VARFUN },
+                { "ABS", COL_VARFUN },
+                { "ACOS", COL_VARFUN },
+                { "APP_NAME", COL_VARFUN },
+                { "APPLOCK_MODE", COL_VARFUN },
+                { "APPLOCK_TEST", COL_VARFUN },
+                { "APPROX_COUNT_DISTINCT", COL_VARFUN },
+                { "ASCII", COL_VARFUN },
+                { "ASIN", COL_VARFUN },
+                { "ASSEMBLYPROPERTY", COL_VARFUN },
+                { "ASYMKEY_ID", COL_VARFUN },
+                { "ASYMKEYPROPERTY", COL_VARFUN },
+                { "ATAN", COL_VARFUN },
+                { "ATN2", COL_VARFUN },
+                { "AVG", COL_VARFUN },
+                { "BINARY_CHECKSUM", COL_VARFUN },
+                { "CAST", COL_VARFUN },
+                { "CEILING", COL_VARFUN },
+                { "CERT_ID", COL_VARFUN },
+                { "CERTENCODED", COL_VARFUN },
+                { "CERTPRIVATEKEY", COL_VARFUN },
+                { "CERTPROPERTY", COL_VARFUN },
+                { "CHARINDEX", COL_VARFUN },
+                { "CHECKSUM", COL_VARFUN },
+                { "CHECKSUM_AGG", COL_VARFUN },
+                { "CHOOSE", COL_VARFUN },
+                { "COALESCE", COL_VARFUN },
+                { "COL_LENGTH", COL_VARFUN },
+                { "COL_NAME", COL_VARFUN },
+                { "COLLATIONPROPERTY", COL_VARFUN },
+                { "COLUMNPROPERTY", COL_VARFUN },
+                { "COLUMNS_UPDATED", COL_VARFUN },
+                { "COMPRESS", COL_VARFUN },
+                { "COMPRESSION_ESTIMATE", COL_VARFUN },
+                { "CONCAT", COL_VARFUN },
+                { "CONCAT_WS", COL_VARFUN },
+                { "CONNECTIONPROPERTY", COL_VARFUN },
+                { "CONTAINS", COL_VARFUN },
+                { "CONVERT", COL_VARFUN },
+                { "COS", COL_VARFUN },
+                { "COT", COL_VARFUN },
+                { "COUNT", COL_VARFUN },
+                { "COUNT_BIG", COL_VARFUN },
+                { "CUME_DIST", COL_VARFUN },
+                { "CURRENT_DATE", COL_VARFUN },
+                { "CURRENT_REQUEST_ID", COL_VARFUN },
+                { "CURRENT_TIME", COL_VARFUN },
+                { "CURRENT_TIMESTAMP", COL_VARFUN },
+                { "CURRENT_TIMEZONE", COL_VARFUN },
+                { "CURRENT_TIMEZONE_ID", COL_VARFUN },
+                { "CURRENT_TRANSACTION_ID", COL_VARFUN },
+                { "CURRENT_USER", COL_VARFUN },
+                { "CURSOR_STATUS", COL_VARFUN },
+                { "DATABASE_PRINCIPAL_ID", COL_VARFUN },
+                { "DATABASEPROPERTY", COL_VARFUN },
+                { "DATABASEPROPERTYEX", COL_VARFUN },
+                { "DATALENGTH", COL_VARFUN },
+                { "DATE_BUCKET", COL_VARFUN },
+                { "DATEADD", COL_VARFUN },
+                { "DATEDIFF", COL_VARFUN },
+                { "DATEFROMPARTS", COL_VARFUN },
+                { "DATENAME", COL_VARFUN },
+                { "DATEPART", COL_VARFUN },
+                { "DATETIME2FROMPARTS", COL_VARFUN },
+                { "DATETIMEFROMPARTS", COL_VARFUN },
+                { "DATETIMEOFFSETFROMPARTS", COL_VARFUN },
+                { "DATETRUNC", COL_VARFUN },
+                { "DAY", COL_VARFUN },
+                { "DB_ID", COL_VARFUN },
+                { "DB_NAME", COL_VARFUN },
+                { "DECOMPRESS", COL_VARFUN },
+                { "DECRYPTBYCERT", COL_VARFUN },
+                { "DECRYPTBYKEY", COL_VARFUN },
+                { "DECRYPTBYKEYAUTOCERT", COL_VARFUN },
+                { "DECRYPTBYPASSPHRASE", COL_VARFUN },
+                { "DEGREES", COL_VARFUN },
+                { "DENSE_RANK", COL_VARFUN },
+                { "DIFFERENCE", COL_VARFUN },
+                { "ENCRYPTBYCERT", COL_VARFUN },
+                { "ENCRYPTBYKEY", COL_VARFUN },
+                { "ENCRYPTBYPASSPHRASE", COL_VARFUN },
+                { "EOMONTH", COL_VARFUN },
+                { "ERROR_LINE", COL_VARFUN },
+                { "ERROR_MESSAGE", COL_VARFUN },
+                { "ERROR_NUMBER", COL_VARFUN },
+                { "ERROR_PROCEDURE", COL_VARFUN },
+                { "ERROR_SEVERITY", COL_VARFUN },
+                { "ERROR_STATE", COL_VARFUN },
+                { "EVENTDATA", COL_VARFUN },
+                { "EXIST", COL_VARFUN },
+                { "EXP", COL_VARFUN },
+                { "FILE_ID", COL_VARFUN },
+                { "FILE_IDEX", COL_VARFUN },
+                { "FILE_NAME", COL_VARFUN },
+                { "FILEGROUP_ID", COL_VARFUN },
+                { "FILEGROUP_NAME", COL_VARFUN },
+                { "FILEGROUPPROPERTY", COL_VARFUN },
+                { "FILEPROPERTY", COL_VARFUN },
+                { "FILETABLEROOTPATH", COL_VARFUN },
+                { "FIRST_VALUE", COL_VARFUN },
+                { "FLOOR", COL_VARFUN },
+                { "FORMAT", COL_VARFUN },
+                { "FORMATMESSAGE", COL_VARFUN },
+                { "FULLTEXTCATALOGPROPERTY", COL_VARFUN },
+                { "FULLTEXTSERVICEPROPERTY", COL_VARFUN },
+                { "GENERATE_SERIES", COL_VARFUN },
+                { "GET_FILESTREAM_TRANSACTION_CONTEXT", COL_VARFUN },
+                { "GET_TRANSMISSION_STATUS", COL_VARFUN },
+                { "GETANSINULL", COL_VARFUN },
+                { "GETDATE", COL_VARFUN },
+                { "GETUTCDATE", COL_VARFUN },
+                { "GRAPH_ID_FROM_EDGE_ID", COL_VARFUN },
+                { "GRAPH_ID_FROM_NODE_ID", COL_VARFUN },
+                { "GREATEST", COL_VARFUN },
+                { "GROUPING", COL_VARFUN },
+                { "GROUPING_ID", COL_VARFUN },
+                { "HAS_DBACCESS", COL_VARFUN },
+                { "HAS_PERMS_BY_NAME", COL_VARFUN },
+                { "HASHBYTES", COL_VARFUN },
+                { "HOST_ID", COL_VARFUN },
+                { "HOST_NAME", COL_VARFUN },
+                { "IDENT_CURRENT", COL_VARFUN },
+                { "IDENT_INCR", COL_VARFUN },
+                { "IDENT_SEED", COL_VARFUN },
+                { "IIF", COL_VARFUN },
+                { "INDEX_COL", COL_VARFUN },
+                { "INDEXKEY_PROPERTY", COL_VARFUN },
+                { "INDEXPROPERTY", COL_VARFUN },
+                { "IS_MEMBER", COL_VARFUN },
+                { "IS_OBJECTSIGNED", COL_VARFUN },
+                { "IS_ROLEMEMBER", COL_VARFUN },
+                { "IS_SRVROLEMEMBER", COL_VARFUN },
+                { "ISDATE", COL_VARFUN },
+                { "ISJSON", COL_VARFUN },
+                { "ISNULL", COL_VARFUN },
+                { "ISNUMERIC", COL_VARFUN },
+                { "JSON_ARRAY", COL_VARFUN },
+                { "JSON_MODIFY", COL_VARFUN },
+                { "JSON_OBJECT", COL_VARFUN },
+                { "JSON_PATH_EXISTS", COL_VARFUN },
+                { "JSON_QUERY", COL_VARFUN },
+                { "JSON_VALUE", COL_VARFUN },
+                { "KEY_GUID", COL_VARFUN },
+                { "KEY_ID", COL_VARFUN },
+                { "LAG", COL_VARFUN },
+                { "LAST_VALUE", COL_VARFUN },
+                { "LEAD", COL_VARFUN },
+                { "LEAST", COL_VARFUN },
+                { "LEN", COL_VARFUN },
+                { "LOG", COL_VARFUN },
+                { "LOG10", COL_VARFUN },
+                { "LOGINPROPERTY", COL_VARFUN },
+                { "LOWER", COL_VARFUN },
+                { "LTRIM", COL_VARFUN },
+                { "MAX", COL_VARFUN },
+                { "MIN", COL_VARFUN },
+                { "MIN_ACTIVE_ROWVERSION", COL_VARFUN },
+                { "MODIFY", COL_VARFUN },
+                { "MONTH", COL_VARFUN },
+                { "NEWID", COL_VARFUN },
+                { "NEWSEQUENTIALID", COL_VARFUN },
+                { "NODE_ID_FROM_PARTS", COL_VARFUN },
+                { "NODES", COL_VARFUN },
+                { "NTILE", COL_VARFUN },
+                { "NULLIF", COL_VARFUN },
+                { "OBJECT_DEFINITION", COL_VARFUN },
+                { "OBJECT_ID", COL_VARFUN },
+                { "OBJECT_NAME", COL_VARFUN },
+                { "OBJECT_SCHEMA_NAME", COL_VARFUN },
+                { "OBJECT_STATE", COL_VARFUN },
+                { "OBJECTPROPERTY", COL_VARFUN },
+                { "OBJECTPROPERTYEX", COL_VARFUN },
+                { "OPENJSON", COL_VARFUN },
+                { "OPENXML", COL_VARFUN },
+                { "ORIGINAL_DB_NAME", COL_VARFUN },
+                { "ORIGINAL_LOGIN", COL_VARFUN },
+                { "PARSE", COL_VARFUN },
+                { "PARSENAME", COL_VARFUN },
+                { "PATHNAME", COL_VARFUN },
+                { "PATINDEX", COL_VARFUN },
+                { "PERCENT_RANK", COL_VARFUN },
+                { "PERCENTILE_CONT", COL_VARFUN },
+                { "PERCENTILE_DISC", COL_VARFUN },
+                { "PERMISSIONS", COL_VARFUN },
+                { "PI", COL_VARFUN },
+                { "POWER", COL_VARFUN },
+                { "PUBLISHINGSERVERNAME", COL_VARFUN },
+                { "PWDCOMPARE", COL_VARFUN },
+                { "PWDENCRYPT", COL_VARFUN },
+                { "QUERY", COL_VARFUN },
+                { "QUOTENAME", COL_VARFUN },
+                { "RADIANS", COL_VARFUN },
+                { "RAND", COL_VARFUN },
+                { "RANK", COL_VARFUN },
+                { "REPLACE", COL_VARFUN },
+                { "REPLICATE", COL_VARFUN },
+                { "REVERSE", COL_VARFUN },
+                { "ROUND", COL_VARFUN },
+                { "ROW_NUMBER", COL_VARFUN },
+                { "ROWCOUNT", COL_VARFUN },
+                { "ROWCOUNT_BIG", COL_VARFUN },
+                { "RTRIM", COL_VARFUN },
+                { "SCHEMA_ID", COL_VARFUN },
+                { "SCHEMA_NAME", COL_VARFUN },
+                { "SCOPE_IDENTITY", COL_VARFUN },
+                { "SERVERPROPERTY", COL_VARFUN },
+                { "SESSION_CONTEXT", COL_VARFUN },
+                { "SESSION_USER", COL_VARFUN },
+                { "SESSIONPROPERTY", COL_VARFUN },
+                { "SIGN", COL_VARFUN },
+                { "SIGNBYASYMKEY", COL_VARFUN },
+                { "SIGNBYCERT", COL_VARFUN },
+                { "SIN", COL_VARFUN },
+                { "SMALLDATETIMEFROMPARTS", COL_VARFUN },
+                { "SOUNDEX", COL_VARFUN },
+                { "SPACE", COL_VARFUN },
+                { "SQL_VARIANT_PROPERTY", COL_VARFUN },
+                { "SQRT", COL_VARFUN },
+                { "SQUARE", COL_VARFUN },
+                { "STATS_DATE", COL_VARFUN },
+                { "STDEV", COL_VARFUN },
+                { "STDEVP", COL_VARFUN },
+                { "STR", COL_VARFUN },
+                { "STRING_AGG", COL_VARFUN },
+                { "STRING_ESCAPE", COL_VARFUN },
+                { "STRING_SPLIT", COL_VARFUN },
+                { "STUFF", COL_VARFUN },
+                { "SUBSTRING", COL_VARFUN },
+                { "SUM", COL_VARFUN },
+                { "SUSER_ID", COL_VARFUN },
+                { "SUSER_NAME", COL_VARFUN },
+                { "SUSER_SID", COL_VARFUN },
+                { "SUSER_SNAME", COL_VARFUN },
+                { "SWITCHOFFSET", COL_VARFUN },
+                { "SYSDATETIME", COL_VARFUN },
+                { "SYSDATETIMEOFFSET", COL_VARFUN },
+                { "SYSTEM_USER", COL_VARFUN },
+                { "SYSUTCDATETIME", COL_VARFUN },
+                { "TAN", COL_VARFUN },
+                { "TERTIARY_WEIGHTS", COL_VARFUN },
+                { "TEXTPTR", COL_VARFUN },
+                { "TEXTVALID", COL_VARFUN },
+                { "TIMEFROMPARTS", COL_VARFUN },
+                { "TODATETIMEOFFSET", COL_VARFUN },
+                { "TRANSACTION_STATE", COL_VARFUN },
+                { "TRANSLATE", COL_VARFUN },
+                { "TRIGGER_EVENTDATA", COL_VARFUN },
+                { "TRIGGER_NESTLEVEL", COL_VARFUN },
+                { "TRIM", COL_VARFUN },
+                { "TRY_CAST", COL_VARFUN },
+                { "TRY_CONVERT", COL_VARFUN },
+                { "TRY_PARSE", COL_VARFUN },
+                { "TSEQUAL", COL_VARFUN },
+                { "TYPE_ID", COL_VARFUN },
+                { "TYPE_NAME", COL_VARFUN },
+                { "TYPEPROPERTY", COL_VARFUN },
+                { "UNICODE", COL_VARFUN },
+                { "UPPER", COL_VARFUN },
+                { "USER", COL_VARFUN },
+                { "USER_ID", COL_VARFUN },
+                { "USER_NAME", COL_VARFUN },
+                { "VALUE", COL_VARFUN },
+                { "VAR", COL_VARFUN },
+                { "VARP", COL_VARFUN },
+                { "VERIFYSIGNEDBYCERT", COL_VARFUN },
+                { "XACT_STATE", COL_VARFUN },
+                { "XML_SCHEMA_NAMESPACE", COL_VARFUN },
+                { "YEAR", COL_VARFUN },
+                // Keywords
+                { "ADD", COL_KEYWORD },
+                { "AFTER", COL_KEYWORD },
+                { "ALTER", COL_KEYWORD },
+                { "ANSI_DEFAULTS", COL_KEYWORD },
+                { "ANSI_NULL_DFLT_OFF", COL_KEYWORD },
+                { "ANSI_NULL_DFLT_ON", COL_KEYWORD },
+                { "ANSI_NULLS", COL_KEYWORD },
+                { "ANSI_PADDING", COL_KEYWORD },
+                { "ANSI_WARNINGS", COL_KEYWORD },
+                { "ARITHABORT", COL_KEYWORD },
+                { "ARITHIGNORE", COL_KEYWORD },
+                { "AS", COL_KEYWORD },
+                { "ASC", COL_KEYWORD },
+                { "ASSEMBLY", COL_KEYWORD },
+                { "AT", COL_KEYWORD },
+                { "AUTHORIZATION", COL_KEYWORD },
+                { "AVAILABILITY", COL_KEYWORD },
+                { "BACKUP", COL_KEYWORD },
+                { "BEGIN", COL_KEYWORD },
+                { "BREAK", COL_KEYWORD },
+                { "BROWSE", COL_KEYWORD },
+                { "BULK", COL_KEYWORD },
+                { "BY", COL_KEYWORD },
+                { "CALLER", COL_KEYWORD },
+                { "CASCADE", COL_KEYWORD },
+                { "CASE", COL_KEYWORD },
+                { "CATCH", COL_KEYWORD },
+                { "CERTIFICATE", COL_KEYWORD },
+                { "CHECK", COL_KEYWORD },
+                { "CHECKCONSTRAINTS", COL_KEYWORD },
+                { "CHECKPOINT", COL_KEYWORD },
+                { "CLASSIFIER", COL_KEYWORD },
+                { "CLOSE", COL_KEYWORD },
+                { "CLUSTERED", COL_KEYWORD },
+                { "COLLATE", COL_KEYWORD },
+                { "COLUMN", COL_KEYWORD },
+                { "COLUMNSTORE", COL_KEYWORD },
+                { "COMMIT", COL_KEYWORD },
+                { "COMMITTED", COL_KEYWORD },
+                { "COMPUTE", COL_KEYWORD },
+                { "CONCAT_NULL_YIELDS_NULL", COL_KEYWORD },
+                { "CONSTRAINT", COL_KEYWORD },
+                { "CONTAINSTABLE", COL_KEYWORD },
+                { "CONTEXT_INFO", COL_KEYWORD },
+                { "CONTINUE", COL_KEYWORD },
+                { "CONTRACT", COL_KEYWORD },
+                { "CONVERSATION", COL_KEYWORD },
+                { "CREATE", COL_KEYWORD },
+                { "CREDENTIAL", COL_KEYWORD },
+                { "CURRENT", COL_KEYWORD },
+                { "CURSOR", COL_KEYWORD },
+                { "CURSOR_CLOSE_ON_COMMIT", COL_KEYWORD },
+                { "DATABASE", COL_KEYWORD },
+                { "DATABASE_SCOPED_CREDENTIAL", COL_KEYWORD },
+                { "DATEFIRST", COL_KEYWORD },
+                { "DATEFORMAT", COL_KEYWORD },
+                { "DBCC", COL_KEYWORD },
+                { "DEADLOCK_PRIORITY", COL_KEYWORD },
+                { "DEALLOCATE", COL_KEYWORD },
+                { "DECLARE", COL_KEYWORD },
+                { "DEFAULT", COL_KEYWORD },
+                { "DELAY", COL_KEYWORD },
+                { "DELETE", COL_KEYWORD },
+                { "DENY", COL_KEYWORD },
+                { "DESC", COL_KEYWORD },
+                { "DETERMINISTIC", COL_KEYWORD },
+                { "DISABLE", COL_KEYWORD },
+                { "DISABLE_DEF_CNST_CHK", COL_KEYWORD },
+                { "DISK", COL_KEYWORD },
+                { "DISTINCT", COL_KEYWORD },
+                { "DISTRIBUTED", COL_KEYWORD },
+                { "DISTRIBUTION", COL_KEYWORD },
+                { "DOUBLE", COL_KEYWORD },
+                { "DROP", COL_KEYWORD },
+                { "DUMP", COL_KEYWORD },
+                { "ELSE", COL_KEYWORD },
+                { "ENABLE", COL_KEYWORD },
+                { "ENCRYPTION", COL_KEYWORD },
+                { "END", COL_KEYWORD },
+                { "ENDPOINT", COL_KEYWORD },
+                { "ERRLVL", COL_KEYWORD },
+                { "ESCAPE", COL_KEYWORD },
+                { "EVENT", COL_KEYWORD },
+                { "EXCEPT", COL_KEYWORD },
+                { "EXEC", COL_KEYWORD },
+                { "EXECUTE", COL_KEYWORD },
+                { "EXIT", COL_KEYWORD },
+                { "EXPAND", COL_KEYWORD },
+                { "EXTERNAL", COL_KEYWORD },
+                { "FAILOVER", COL_KEYWORD },
+                { "FAST", COL_KEYWORD },
+                { "FASTFIRSTROW", COL_KEYWORD },
+                { "FEDERATION", COL_KEYWORD },
+                { "FETCH", COL_KEYWORD },
+                { "FILE", COL_KEYWORD },
+                { "FILEGROUP", COL_KEYWORD },
+                { "FILESTREAM", COL_KEYWORD },
+                { "FILLFACTOR", COL_KEYWORD },
+                { "FIPS_FLAGGER", COL_KEYWORD },
+                { "FMTONLY", COL_KEYWORD },
+                { "FOR", COL_KEYWORD },
+                { "FORCE", COL_KEYWORD },
+                { "FORCED", COL_KEYWORD },
+                { "FORCEPLAN", COL_KEYWORD },
+                { "FOREIGN", COL_KEYWORD },
+                { "FREETEXT", COL_KEYWORD },
+                { "FREETEXTTABLE", COL_KEYWORD },
+                { "FROM", COL_KEYWORD },
+                { "FULL", COL_KEYWORD },
+                { "FULLTEXT", COL_KEYWORD },
+                { "FUNCTION", COL_KEYWORD },
+                { "GET", COL_KEYWORD },
+                { "GO", COL_KEYWORD },
+                { "GOTO", COL_KEYWORD },
+                { "GRANT", COL_KEYWORD },
+                { "GROUP", COL_KEYWORD },
+                { "HASH", COL_KEYWORD },
+                { "HAVING", COL_KEYWORD },
+                { "HEAP", COL_KEYWORD },
+                { "HIDDEN", COL_KEYWORD },
+                { "HOLDLOCK", COL_KEYWORD },
+                { "IDENTITY", COL_KEYWORD },
+                { "IDENTITY_INSERT", COL_KEYWORD },
+                { "IDENTITYCOL", COL_KEYWORD },
+                { "IF", COL_KEYWORD },
+                { "IGNORE_CONSTRAINTS", COL_KEYWORD },
+                { "IGNORE_DUP_KEY", COL_KEYWORD },
+                { "IGNORE_TRIGGERS", COL_KEYWORD },
+                { "IMPLICIT_TRANSACTIONS", COL_KEYWORD },
+                { "INCLUDE", COL_KEYWORD },
+                { "INDEX", COL_KEYWORD },
+                { "INSERT", COL_KEYWORD },
+                { "INSTEAD", COL_KEYWORD },
+                { "INTERSECT", COL_KEYWORD },
+                { "INTO", COL_KEYWORD },
+                { "IO", COL_KEYWORD },
+                { "ISOLATION", COL_KEYWORD },
+                { "JSON", COL_KEYWORD },
+                { "KEEP", COL_KEYWORD },
+                { "KEEPDEFAULTS", COL_KEYWORD },
+                { "KEEPFIXED", COL_KEYWORD },
+                { "KEEPIDENTITY", COL_KEYWORD },
+                { "KEY", COL_KEYWORD },
+                { "KILL", COL_KEYWORD },
+                { "LANGUAGE", COL_KEYWORD },
+                { "LEDGER", COL_KEYWORD },
+                { "LEVEL", COL_KEYWORD },
+                { "LINENO", COL_KEYWORD },
+                { "LOAD", COL_KEYWORD },
+                { "LOCK_TIMEOUT", COL_KEYWORD },
+                { "LOGIN", COL_KEYWORD },
+                { "LOOP", COL_KEYWORD },
+                { "MASK", COL_KEYWORD },
+                { "MASKED", COL_KEYWORD },
+                { "MASTER", COL_KEYWORD },
+                { "MAXDOP", COL_KEYWORD },
+                { "MAXRECURSION", COL_KEYWORD },
+                { "MERGE", COL_KEYWORD },
+                { "MESSAGE", COL_KEYWORD },
+                { "MOVE", COL_KEYWORD },
+                { "NATIONAL", COL_KEYWORD },
+                { "NEXT", COL_KEYWORD },
+                { "NOCHECK", COL_KEYWORD },
+                { "NOCOUNT", COL_KEYWORD },
+                { "NOEXEC", COL_KEYWORD },
+                { "NOEXPAND", COL_KEYWORD },
+                { "NOINIT", COL_KEYWORD },
+                { "NOLOCK", COL_KEYWORD },
+                { "NONCLUSTERED", COL_KEYWORD },
+                { "NONVALIDATING", COL_KEYWORD },
+                { "NORECOVERY", COL_KEYWORD },
+                { "NOTIFICATION", COL_KEYWORD },
+                { "NOWAIT", COL_KEYWORD },
+                { "NUMERIC_ROUNDABORT", COL_KEYWORD },
+                { "OF", COL_KEYWORD },
+                { "OFF", COL_KEYWORD },
+                { "OFFLINE", COL_KEYWORD },
+                { "OFFSET", COL_KEYWORD },
+                { "OFFSETS", COL_KEYWORD },
+                { "ON", COL_KEYWORD },
+                { "ONLINE", COL_KEYWORD },
+                { "OPEN", COL_KEYWORD },
+                { "OPENDATASOURCE", COL_KEYWORD },
+                { "OPENQUERY", COL_KEYWORD },
+                { "OPENROWSET", COL_KEYWORD },
+                { "OPTION", COL_KEYWORD },
+                { "ORDER", COL_KEYWORD },
+                { "OUT", COL_KEYWORD },
+                { "OUTPUT", COL_KEYWORD },
+                { "OVER", COL_KEYWORD },
+                { "OWNER", COL_KEYWORD },
+                { "PAD_INDEX", COL_KEYWORD },
+                { "PAGLOCK", COL_KEYWORD },
+                { "PARAMETERIZATION", COL_KEYWORD },
+                { "PARSEONLY", COL_KEYWORD },
+                { "PARTITION", COL_KEYWORD },
+                { "PASSWORD", COL_KEYWORD },
+                { "PERCENT", COL_KEYWORD },
+                { "PERIOD", COL_KEYWORD },
+                { "PERSISTED", COL_KEYWORD },
+                { "PLAN", COL_KEYWORD },
+                { "POLICY", COL_KEYWORD },
+                { "POOL", COL_KEYWORD },
+                { "PRECISION", COL_KEYWORD },
+                { "PREDICATE", COL_KEYWORD },
+                { "PRIMARY", COL_KEYWORD },
+                { "PRINT", COL_KEYWORD },
+                { "PRIORITY", COL_KEYWORD },
+                { "PROC", COL_KEYWORD },
+                { "PROCEDURE", COL_KEYWORD },
+                { "PROFILE", COL_KEYWORD },
+                { "PUBLIC", COL_KEYWORD },
+                { "QUERY_GOVERNOR_COST_LIMIT", COL_KEYWORD },
+                { "QUEUE", COL_KEYWORD },
+                { "QUOTED_IDENTIFIER", COL_KEYWORD },
+                { "RAISERROR", COL_KEYWORD },
+                { "RANGE", COL_KEYWORD },
+                { "READ", COL_KEYWORD },
+                { "READCOMMITTED", COL_KEYWORD },
+                { "READCOMMITTEDLOCK", COL_KEYWORD },
+                { "READPAST", COL_KEYWORD },
+                { "READTEXT", COL_KEYWORD },
+                { "READUNCOMMITTED", COL_KEYWORD },
+                { "REBUILD", COL_KEYWORD },
+                { "RECEIVE", COL_KEYWORD },
+                { "RECOMPILE", COL_KEYWORD },
+                { "RECONFIGURE", COL_KEYWORD },
+                { "RECOVERY", COL_KEYWORD },
+                { "REFERENCES", COL_KEYWORD },
+                { "REMOTE", COL_KEYWORD },
+                { "REMOTE_PROC_TRANSACTIONS", COL_KEYWORD },
+                { "REORGANIZE", COL_KEYWORD },
+                { "REPEATABLE", COL_KEYWORD },
+                { "REPEATABLEREAD", COL_KEYWORD },
+                { "REPLICATION", COL_KEYWORD },
+                { "RESTORE", COL_KEYWORD },
+                { "RESTRICT", COL_KEYWORD },
+                { "RESUMABLE", COL_KEYWORD },
+                { "RETURN", COL_KEYWORD },
+                { "RETURNS", COL_KEYWORD },
+                { "REVERT", COL_KEYWORD },
+                { "REVOKE", COL_KEYWORD },
+                { "ROBUST", COL_KEYWORD },
+                { "ROLE", COL_KEYWORD },
+                { "ROLLBACK", COL_KEYWORD },
+                { "ROUND_ROBIN", COL_KEYWORD },
+                { "ROUTE", COL_KEYWORD },
+                { "ROWGUIDCOL", COL_KEYWORD },
+                { "ROWLOCK", COL_KEYWORD },
+                { "ROWS", COL_KEYWORD },
+                { "ROWVERSION", COL_KEYWORD },
+                { "RULE", COL_KEYWORD },
+                { "SAVE", COL_KEYWORD },
+                { "SCHEMA", COL_KEYWORD },
+                { "SCHEMABINDING", COL_KEYWORD },
+                { "SCOPED", COL_KEYWORD },
+                { "SECRET", COL_KEYWORD },
+                { "SECURITY", COL_KEYWORD },
+                { "SECURITYAUDIT", COL_KEYWORD },
+                { "SELECT", COL_KEYWORD },
+                { "SELF", COL_KEYWORD },
+                { "SEND", COL_KEYWORD },
+                { "SENSITIVITY", COL_KEYWORD },
+                { "SEQUENCE", COL_KEYWORD },
+                { "SERIALIZABLE", COL_KEYWORD },
+                { "SERVER", COL_KEYWORD },
+                { "SERVICE", COL_KEYWORD },
+                { "SESSION", COL_KEYWORD },
+                { "SET", COL_KEYWORD },
+                { "SETUSER", COL_KEYWORD },
+                { "SHOW_STATISTICS", COL_KEYWORD },
+                { "SHOWPLAN_ALL", COL_KEYWORD },
+                { "SHOWPLAN_TEXT", COL_KEYWORD },
+                { "SHUTDOWN", COL_KEYWORD },
+                { "SIGNATURE", COL_KEYWORD },
+                { "SIMPLE", COL_KEYWORD },
+                { "SNAPSHOT", COL_KEYWORD },
+                { "SPARSE", COL_KEYWORD },
+                { "STANDBY", COL_KEYWORD },
+                { "STATE", COL_KEYWORD },
+                { "STATISTICS", COL_KEYWORD },
+                { "STATS", COL_KEYWORD },
+                { "STOPLIST", COL_KEYWORD },
+                { "SYMMETRIC", COL_KEYWORD },
+                { "SYNONYM", COL_KEYWORD },
+                { "SYSTEM", COL_KEYWORD },
+                { "SYSTEM_TIME", COL_KEYWORD },
+                { "SYSTEM_VERSIONING", COL_KEYWORD },
+                { "TABLE", COL_KEYWORD },
+                { "TABLESAMPLE", COL_KEYWORD },
+                { "TABLOCK", COL_KEYWORD },
+                { "TABLOCKX", COL_KEYWORD },
+                { "TAPE", COL_KEYWORD },
+                { "TARGET", COL_KEYWORD },
+                { "TEXTSIZE", COL_KEYWORD },
+                { "THEN", COL_KEYWORD },
+                { "THROW", COL_KEYWORD },
+                { "TIMEOUT", COL_KEYWORD },
+                { "TO", COL_KEYWORD },
+                { "TOP", COL_KEYWORD },
+                { "TRAN", COL_KEYWORD },
+                { "TRANSACTION", COL_KEYWORD },
+                { "TRIGGER", COL_KEYWORD },
+                { "TRUNCATE", COL_KEYWORD },
+                { "TRY", COL_KEYWORD },
+                { "TYPE", COL_KEYWORD },
+                { "UNBOUNDED", COL_KEYWORD },
+                { "UNCOMMITTED", COL_KEYWORD },
+                { "UNION", COL_KEYWORD },
+                { "UNIQUE", COL_KEYWORD },
+                { "UPDATE", COL_KEYWORD },
+                { "UPDATETEXT", COL_KEYWORD },
+                { "UPDLOCK", COL_KEYWORD },
+                { "USE", COL_KEYWORD },
+                { "USEROPTIONS", COL_KEYWORD },
+                { "USING", COL_KEYWORD },
+                { "VALIDATION", COL_KEYWORD },
+                { "VALUES", COL_KEYWORD },
+                { "VARYING", COL_KEYWORD },
+                { "VIEW", COL_KEYWORD },
+                { "VIEW_METADATA", COL_KEYWORD },
+                { "WAITFOR", COL_KEYWORD },
+                { "WHEN", COL_KEYWORD },
+                { "WHERE", COL_KEYWORD },
+                { "WHILE", COL_KEYWORD },
+                { "WITH", COL_KEYWORD },
+                { "WITHIN GROUP", COL_KEYWORD },
+                { "WORKLOAD", COL_KEYWORD },
+                { "WRITETEXT", COL_KEYWORD },
+                { "XACT_ABORT", COL_KEYWORD },
+                { "XLOCK", COL_KEYWORD },
+                { "XML", COL_KEYWORD },
+                // Operators
+                { "ALL", COL_OPERATOR },
+                { "AND", COL_OPERATOR },
+                { "ANY", COL_OPERATOR },
+                { "APPLY", COL_OPERATOR },
+                { "BETWEEN", COL_OPERATOR },
+                { "CROSS", COL_OPERATOR },
+                { "EXISTS", COL_OPERATOR },
+                { "IN", COL_OPERATOR },
+                { "INNER", COL_OPERATOR },
+                { "IS", COL_OPERATOR },
+                { "JOIN", COL_OPERATOR },
+                { "LEFT", COL_OPERATOR },
+                { "LIKE", COL_OPERATOR },
+                { "MATCHED", COL_OPERATOR },
+                { "NOT", COL_OPERATOR },
+                { "NULL", COL_OPERATOR },
+                { "OR", COL_OPERATOR },
+                { "OUTER", COL_OPERATOR },
+                { "PIVOT", COL_OPERATOR },
+                { "RIGHT", COL_OPERATOR },
+                { "SOME", COL_OPERATOR },
+                { "SOURCE", COL_OPERATOR },
+                { "UNPIVOT", COL_OPERATOR },
+                // Types
+                { "BIGINT", COL_TYPE },
+                { "BINARY", COL_TYPE },
+                { "BIT", COL_TYPE },
+                { "CHAR", COL_TYPE },
+                { "DATE", COL_TYPE },
+                { "DATETIME", COL_TYPE },
+                { "DATETIME2", COL_TYPE },
+                { "DATETIMEOFFSET", COL_TYPE },
+                { "DECIMAL", COL_TYPE },
+                { "FLOAT", COL_TYPE },
+                { "GEOGRAPHY", COL_TYPE },
+                { "GEOMETRY", COL_TYPE },
+                { "HIERARCHYID", COL_TYPE },
+                { "IMAGE", COL_TYPE },
+                { "INT", COL_TYPE },
+                { "MONEY", COL_TYPE },
+                { "NCHAR", COL_TYPE },
+                { "NTEXT", COL_TYPE },
+                { "NUMERIC", COL_TYPE },
+                { "NVARCHAR", COL_TYPE },
+                { "REAL", COL_TYPE },
+                { "SMALLDATETIME", COL_TYPE },
+                { "SMALLINT", COL_TYPE },
+                { "SMALLMONEY", COL_TYPE },
+                { "SQL_VARIANT", COL_TYPE },
+                { "SYSNAME", COL_TYPE },
+                { "TEXT", COL_TYPE },
+                { "TIME", COL_TYPE },
+                { "TIMESTAMP", COL_TYPE },
+                { "TINYINT", COL_TYPE },
+                { "UNIQUEIDENTIFIER", COL_TYPE },
+                { "VARBINARY", COL_TYPE },
+                { "VARCHAR", COL_TYPE },
+                { "VECTOR", COL_TYPE }
+
+            };
         }
 
         public void Highlight(RichTextBox rtbCode)
         {
             rtbCode.SelectionStart = 0;
             rtbCode.SelectionLength = rtbCode.Text.Length;
-            rtbCode.SelectionBackColor = Color.White;
-            rtbCode.SelectionColor = Color.Black;
+            rtbCode.SelectionBackColor = rtbCode.BackColor;
+            rtbCode.SelectionColor = rtbCode.ForeColor;
 
             Regex r = new Regex(@"([\n\[\](),;'""])|(\s+)|(--)|(/\*)|(\*/)|([!=<>\+\-\*/%&\|\^])");
 
@@ -623,15 +755,15 @@ namespace SqlDbAid
                             rtbCode.Select(selStart, pos - selStart + token.Length);
                             if (token == "]")
                             {
-                                rtbCode.SelectionColor = Color.Black;
+                                rtbCode.SelectionColor = COL_NORMAL;
                             }
                             else if (token == "'" || token == "\"")
                             {
-                                rtbCode.SelectionColor = Color.Red;
+                                rtbCode.SelectionColor = COL_STRING;
                             }
                             else
                             {
-                                rtbCode.SelectionColor = Color.Green;
+                                rtbCode.SelectionColor = COL_COMMENT;
                             }
                             openToken = "";
                         }
@@ -643,31 +775,16 @@ namespace SqlDbAid
                     }
                     else
                     {
-                        string hv = (string)mKW[token.ToUpper()];
-                        if (!string.IsNullOrEmpty(hv))
+                        if (mKW.TryGetValue(token.ToUpper(), out Color color))
                         {
                             rtbCode.Select(pos, token.Length);
-
-                            switch (hv)
-                            {
-                                case "K1":
-                                    rtbCode.SelectionColor = Color.Gray;
-                                    break;
-                                case "K2":
-                                    rtbCode.SelectionColor = Color.Blue;
-                                    break;
-                                case "K3":
-                                    rtbCode.SelectionColor = Color.Blue;
-                                    break;
-                                case "K4":
-                                    rtbCode.SelectionColor = Color.Magenta;
-                                    break;
-                            }
+                            rtbCode.SelectionColor = color;
                         }
                     }
                 }
                 pos = pos + currentToken.Length;
             }
         }
+
     }
 }

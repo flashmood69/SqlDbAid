@@ -6,12 +6,10 @@ using System.Data.SqlClient;
 using System.Drawing;
 using System.IO;
 using System.Net;
-using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
-using System.Xml;
 
 namespace SqlDbAid
 {
