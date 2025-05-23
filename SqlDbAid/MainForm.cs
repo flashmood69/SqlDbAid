@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -97,13 +97,27 @@ namespace SqlDbAid
                 connString += ";Initial Catalog=" + initialCatalog;
             }
 
-            if (Properties.Settings.Default.MwnWindowsAuthentication == true)
+            string authMode = Properties.Settings.Default.MwnAuthenticationMode;
+            
+            switch (authMode)
             {
-                connString += ";Integrated Security=true";
-            }
-            else
-            {
-                connString += ";User Id=" + Properties.Settings.Default.MwnUsername + ";Password=" + txtPassword.Text;
+                case "Windows Authentication":
+                    connString += ";Integrated Security=true";
+                    break;
+                case "SQL Server Authentication":
+                    connString += ";User Id=" + Properties.Settings.Default.MwnUsername + ";Password=" + txtPassword.Text;
+                    break;
+                case "Microsoft Entra Password":
+                    connString += ";Authentication=Active Directory Password";
+                    if (!string.IsNullOrEmpty(Properties.Settings.Default.MwnUsername))
+                    {
+                        connString += ";User Id=" + Properties.Settings.Default.MwnUsername;
+                    }
+                    break;
+                default:
+                    // Default to Windows Authentication for backward compatibility
+                    connString += ";Integrated Security=true";
+                    break;
             }
 
             return connString;
@@ -845,7 +859,13 @@ namespace SqlDbAid
         {
             cmbServer.Text = Properties.Settings.Default.MwnServer;
             txtUsername.Text = Properties.Settings.Default.MwnUsername;
-            chkWinAuth.Checked = Properties.Settings.Default.MwnWindowsAuthentication;
+            cmbAuthMode.SelectedItem = Properties.Settings.Default.MwnAuthenticationMode;
+            
+            // Set default if no value is saved
+            if (cmbAuthMode.SelectedItem == null)
+            {
+                cmbAuthMode.SelectedItem = "Windows Authentication";
+            }
 
             LoadServerList();
 
@@ -857,7 +877,7 @@ namespace SqlDbAid
         {
             Properties.Settings.Default.MwnServer = cmbServer.Text;
             Properties.Settings.Default.MwnUsername = txtUsername.Text;
-            Properties.Settings.Default.MwnWindowsAuthentication = chkWinAuth.Checked;
+            Properties.Settings.Default.MwnAuthenticationMode = cmbAuthMode.SelectedItem.ToString();
 
             Properties.Settings.Default.Save();
         }
@@ -1020,12 +1040,13 @@ namespace SqlDbAid
             }
         }
 
-        private void chkWinAuth_CheckedChanged(object sender, EventArgs e)
+        private void cmbAuthMode_SelectedIndexChanged(object sender, EventArgs e)
         {
-            txtUsername.Enabled = !chkWinAuth.Checked;
-            txtPassword.Enabled = !chkWinAuth.Checked;
+            bool enableCredentials = cmbAuthMode.SelectedItem.ToString() != "Windows Authentication";
+            txtUsername.Enabled = enableCredentials;
+            txtPassword.Enabled = enableCredentials;
 
-            Properties.Settings.Default.MwnWindowsAuthentication = chkWinAuth.Checked;
+            Properties.Settings.Default.MwnAuthenticationMode = cmbAuthMode.SelectedItem.ToString();
         }
 
         private void missingForeignKeyIndexesToolStripMenuItem_Click(object sender, EventArgs e)

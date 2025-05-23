@@ -1,4 +1,4 @@
-﻿namespace SqlDbAid
+namespace SqlDbAid
 {
     partial class MainForm
     {
@@ -54,7 +54,7 @@
             this.lblDatabase = new System.Windows.Forms.Label();
             this.exportFolderBrowser = new System.Windows.Forms.FolderBrowserDialog();
             this.lblObjType = new System.Windows.Forms.Label();
-            this.chkWinAuth = new System.Windows.Forms.CheckBox();
+            this.cmbAuthMode = new System.Windows.Forms.ComboBox();
             this.txtUsername = new System.Windows.Forms.TextBox();
             this.txtPassword = new System.Windows.Forms.TextBox();
             this.lblUsername = new System.Windows.Forms.Label();
@@ -128,6 +128,7 @@
             this.code = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ord_id = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.chkRegex = new System.Windows.Forms.CheckBox();
+            this.lblAuthentication = new System.Windows.Forms.Label();
             this.datagridMenu.SuspendLayout();
             this.mainStatusStrip.SuspendLayout();
             this.mainMenu.SuspendLayout();
@@ -310,18 +311,19 @@
             this.lblObjType.TabIndex = 8;
             this.lblObjType.Text = "Object Type";
             // 
-            // chkWinAuth
+            // cmbAuthMode
             // 
-            this.chkWinAuth.AutoSize = true;
-            this.chkWinAuth.Checked = true;
-            this.chkWinAuth.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkWinAuth.Location = new System.Drawing.Point(63, 78);
-            this.chkWinAuth.Name = "chkWinAuth";
-            this.chkWinAuth.Size = new System.Drawing.Size(115, 17);
-            this.chkWinAuth.TabIndex = 3;
-            this.chkWinAuth.Text = "Integrated Security";
-            this.chkWinAuth.UseVisualStyleBackColor = true;
-            this.chkWinAuth.CheckedChanged += new System.EventHandler(this.chkWinAuth_CheckedChanged);
+            this.cmbAuthMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbAuthMode.FormattingEnabled = true;
+            this.cmbAuthMode.Items.AddRange(new object[] {
+            "Windows Authentication",
+            "SQL Server Authentication",
+            "Microsoft Entra Password"});
+            this.cmbAuthMode.Location = new System.Drawing.Point(63, 76);
+            this.cmbAuthMode.Name = "cmbAuthMode";
+            this.cmbAuthMode.Size = new System.Drawing.Size(176, 21);
+            this.cmbAuthMode.TabIndex = 3;
+            this.cmbAuthMode.SelectedIndexChanged += new System.EventHandler(this.cmbAuthMode_SelectedIndexChanged);
             // 
             // txtUsername
             // 
@@ -353,7 +355,7 @@
             // lblPassword
             // 
             this.lblPassword.AutoSize = true;
-            this.lblPassword.Location = new System.Drawing.Point(5, 57);
+            this.lblPassword.Location = new System.Drawing.Point(5, 56);
             this.lblPassword.Name = "lblPassword";
             this.lblPassword.Size = new System.Drawing.Size(53, 13);
             this.lblPassword.TabIndex = 14;
@@ -977,11 +979,21 @@
             this.chkRegex.Text = "Regular Expression";
             this.chkRegex.UseVisualStyleBackColor = true;
             // 
+            // lblAuthentication
+            // 
+            this.lblAuthentication.AutoSize = true;
+            this.lblAuthentication.Location = new System.Drawing.Point(5, 79);
+            this.lblAuthentication.Name = "lblAuthentication";
+            this.lblAuthentication.Size = new System.Drawing.Size(47, 13);
+            this.lblAuthentication.TabIndex = 17;
+            this.lblAuthentication.Text = "Authent.";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(684, 486);
+            this.Controls.Add(this.lblAuthentication);
             this.Controls.Add(this.chlObjType);
             this.Controls.Add(this.chkRegex);
             this.Controls.Add(this.dgvCode);
@@ -998,7 +1010,7 @@
             this.Controls.Add(this.lblObjType);
             this.Controls.Add(this.lblDatabase);
             this.Controls.Add(this.btnRefresh);
-            this.Controls.Add(this.chkWinAuth);
+            this.Controls.Add(this.cmbAuthMode);
             this.Controls.Add(this.cmbDatabase);
             this.Controls.Add(this.btnExport);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -1028,7 +1040,7 @@
         private System.Windows.Forms.Label lblDatabase;
         private System.Windows.Forms.FolderBrowserDialog exportFolderBrowser;
         private System.Windows.Forms.Label lblObjType;
-        private System.Windows.Forms.CheckBox chkWinAuth;
+        private System.Windows.Forms.ComboBox cmbAuthMode;
         private System.Windows.Forms.TextBox txtUsername;
         private System.Windows.Forms.TextBox txtPassword;
         private System.Windows.Forms.Label lblUsername;
@@ -1116,6 +1128,7 @@
         private System.Windows.Forms.ToolStripMenuItem plansCacheToolStripMenuItem;
         private System.Windows.Forms.CheckedListBox chlObjType;
         private System.Windows.Forms.ToolStripMenuItem deadlocksToolStripMenuItem;
+        private System.Windows.Forms.Label lblAuthentication;
     }
 }
 

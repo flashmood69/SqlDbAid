@@ -46,16 +46,18 @@ namespace SqlDbAid.Properties {
                 this["MwnUsername"] = value;
             }
         }
-        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool MwnWindowsAuthentication {
-            get {
-                return ((bool)(this["MwnWindowsAuthentication"]));
+        public string MwnAuthenticationMode
+        {
+            get
+            {
+                return ((string)(this["MwnAuthenticationMode"]));
             }
-            set {
-                this["MwnWindowsAuthentication"] = value;
+            set
+            {
+                this["MwnAuthenticationMode"] = value;
             }
         }
         

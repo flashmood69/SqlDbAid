@@ -1,5 +1,8 @@
 # SqlDbAid Changelog
 
+## [v2.6.6.0]
+- Microsoft Entra Password Authentication (experimental).
+
 ## [v2.6.5.0]
 - Revisited SQL Highlighter plus updeted keywords.
 
