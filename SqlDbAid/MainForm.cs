@@ -1047,6 +1047,14 @@ namespace SqlDbAid
             txtPassword.Enabled = enableCredentials;
 
             Properties.Settings.Default.MwnAuthenticationMode = cmbAuthMode.SelectedItem.ToString();
+
+            if (cmbDatabase.Items.Count > 1)
+            {
+                cmbDatabase.DataSource = null;
+                cmbDatabase.Items.Clear();
+
+                UpdateControlStatus();
+            }
         }
 
         private void missingForeignKeyIndexesToolStripMenuItem_Click(object sender, EventArgs e)

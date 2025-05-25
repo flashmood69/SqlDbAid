@@ -1,5 +1,10 @@
 # SqlDbAid Changelog
 
+## [v2.6.7.0]
+- Clear database dropdown when switching authentication modes
+- Add alternating row colors to all DataGridView controls for better readability
+- Remove unused Win32 API calls from CodeForm
+
 ## [v2.6.6.0]
 - Microsoft Entra Password Authentication (experimental).
 

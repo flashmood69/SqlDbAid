@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using System.Runtime.InteropServices;
+//using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -75,11 +75,11 @@ namespace SqlDbAid
         private const int EM_GETSCROLLPOS = WM_USER + 221;
         private const int EM_SETSCROLLPOS = WM_USER + 222;
 
-        [DllImport("user32")]
-        private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, IntPtr lParam);
+        //[DllImport("user32")]
+        //private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, IntPtr lParam);
 
-        [DllImport("user32")]
-        private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, ref Point lParam);
+        //[DllImport("user32")]
+        //private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, ref Point lParam);
 
         private void SelectNext()
         {
@@ -122,11 +122,6 @@ namespace SqlDbAid
         private void SyntaxHighlight()
         {
             highlighting = true;
-            Point pt = new Point();
-
-            SendMessage(rtbCode.Handle, WM_SETREDRAW, 0, IntPtr.Zero);
-            IntPtr eventMask = SendMessage(rtbCode.Handle, EM_GETEVENTMASK, 0, IntPtr.Zero);
-            SendMessage(rtbCode.Handle, EM_GETSCROLLPOS, 0, ref pt);
 
             sqlHL.Highlight(rtbCode);
 
@@ -145,14 +140,9 @@ namespace SqlDbAid
                 foreach (Match match in matchColl)
                 {
                     rtbCode.Select(match.Index, match.Length);
-                    //rtbCode.SelectionColor = Color.Black;
                     rtbCode.SelectionBackColor = Color.Yellow;
                 }
             }
-
-            SendMessage(rtbCode.Handle, EM_SETEVENTMASK, 0, eventMask);
-            SendMessage(rtbCode.Handle, WM_SETREDRAW, 1, IntPtr.Zero);
-            SendMessage(rtbCode.Handle, EM_SETSCROLLPOS, 0, ref pt);
 
             rtbCode.Invalidate();
             highlighting = false;
