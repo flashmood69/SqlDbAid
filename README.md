@@ -1,3 +1,5 @@
+
+
 # SqlDbAid
 
 <p align="center">
@@ -70,7 +72,7 @@ No installation is required as SqlDbAid is a portable application.
 ### Connecting to a Database
 
 1. Launch SqlDbAid
-2. Enter your SQL Server instance name (you can manage a server list from the option menu)
+2. Enter your SQL Server instance name (you can manage a server list from the Options menu)
 3. Choose authentication method (Windows or SQL Server)
 4. If using SQL Server authentication, enter your username and password
 5. Select a database from the dropdown list (this automatically opens the connection)
