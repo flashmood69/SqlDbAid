@@ -1,8 +1,10 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
+using System.Globalization;
+using System.Text;
 using System.Windows.Forms;
 
 namespace SqlDbAid
@@ -35,6 +37,7 @@ namespace SqlDbAid
         string[] mColumnTypes;
 
         DataExporter dataExporter;
+        ToolStripMenuItem exportResultsToolStripMenuItem;
 
         public string AppendTitle
         {
@@ -181,6 +184,8 @@ namespace SqlDbAid
             dataExporter.ExecutionTimeout = mExecutionTimeout;
 
             mExporting = true;
+            dataExporter.ClearResult();
+            exportResultsToolStripMenuItem.Enabled = false;
             btnExport.Enabled = false;
             btnRun.Enabled = false;
             btnAbort.Enabled = true;
@@ -223,6 +228,95 @@ namespace SqlDbAid
                 {
                     MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+            }
+        }
+
+        private static string FormatExportValue(object value, string delimiter)
+        {
+            if (value == null || value == DBNull.Value)
+            {
+                return "";
+            }
+
+            string text;
+            byte[] binary = value as byte[];
+            if (binary != null)
+            {
+                text = "0x" + BitConverter.ToString(binary).Replace("-", "");
+            }
+            else
+            {
+                IFormattable formattable = value as IFormattable;
+                text = formattable == null
+                    ? value.ToString()
+                    : formattable.ToString(null, CultureInfo.InvariantCulture);
+            }
+
+            if (text.Contains(delimiter) || text.Contains("\"") || text.Contains("\r") || text.Contains("\n"))
+            {
+                return "\"" + text.Replace("\"", "\"\"") + "\"";
+            }
+
+            return text;
+        }
+
+        private void ExportResults()
+        {
+            DataTable result = dataExporter == null ? null : dataExporter.ResultTable;
+            if (result == null || result.Columns.Count == 0)
+            {
+                return;
+            }
+
+            string originalFilter = exportFileBrowser.Filter;
+            string originalDefaultExt = exportFileBrowser.DefaultExt;
+            exportFileBrowser.Filter = "CSV files (*.csv)|*.csv|Tab-delimited files (*.tsv)|*.tsv|All files (*.*)|*.*";
+            exportFileBrowser.FilterIndex = 1;
+            exportFileBrowser.DefaultExt = "csv";
+            exportFileBrowser.FileName = FileHelper.CleanFileName(string.IsNullOrEmpty(mFileName) ? "Results" : mFileName);
+
+            try
+            {
+                if (exportFileBrowser.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+
+                string delimiter = exportFileBrowser.FilterIndex == 2 ? "\t" : ",";
+                using (StreamWriter writer = new StreamWriter(exportFileBrowser.FileName, false, new UTF8Encoding(true)))
+                {
+                    for (int columnIndex = 0; columnIndex < result.Columns.Count; columnIndex++)
+                    {
+                        if (columnIndex > 0)
+                        {
+                            writer.Write(delimiter);
+                        }
+                        writer.Write(FormatExportValue(result.Columns[columnIndex].ColumnName, delimiter));
+                    }
+                    writer.WriteLine();
+
+                    foreach (DataRow row in result.Rows)
+                    {
+                        for (int columnIndex = 0; columnIndex < result.Columns.Count; columnIndex++)
+                        {
+                            if (columnIndex > 0)
+                            {
+                                writer.Write(delimiter);
+                            }
+                            writer.Write(FormatExportValue(row[columnIndex], delimiter));
+                        }
+                        writer.WriteLine();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Export Results", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                exportFileBrowser.Filter = originalFilter;
+                exportFileBrowser.DefaultExt = originalDefaultExt;
             }
         }
 
@@ -322,6 +416,10 @@ namespace SqlDbAid
         private void ResultForm_Load(object sender, EventArgs e)
         {
             dgvResult.ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableWithoutHeaderText;
+
+            exportResultsToolStripMenuItem = new ToolStripMenuItem("Export Results...");
+            exportResultsToolStripMenuItem.Click += new EventHandler(exportResultsToolStripMenuItem_Click);
+            datagridMenu.Items.Insert(2, exportResultsToolStripMenuItem);
 
             dataExporter = new DataExporter();
             dataExporter.WorkerReportsProgress = true;
@@ -427,6 +525,8 @@ namespace SqlDbAid
                 dgvResult.DataSource = dataExporter.ResultTable;
             }
 
+            exportResultsToolStripMenuItem.Enabled =
+                dataExporter.ResultTable != null && dataExporter.ResultTable.Columns.Count > 0;
             btnRun.Enabled = true;
             btnAbort.Enabled = false;
 
@@ -538,8 +638,15 @@ namespace SqlDbAid
             DataGridView.HitTestInfo hti = dgvResult.HitTest(e.X, e.Y);
 
             mCurrentRow = hti.RowIndex;
+            exportResultsToolStripMenuItem.Enabled =
+                !mExporting && dataExporter.ResultTable != null && dataExporter.ResultTable.Columns.Count > 0;
 
             dgvResult.ContextMenuStrip = datagridMenu;
+        }
+
+        private void exportResultsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ExportResults();
         }
 
         private void dgvResult_CellMouseDoubleClick(object sender, DataGridViewCellMouseEventArgs e)

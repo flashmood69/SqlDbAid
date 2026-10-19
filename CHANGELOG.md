@@ -1,5 +1,14 @@
 # SqlDbAid Changelog
 
+## [2.6.8.0]
+- Offline Compare can ignore SQL Server-generated constraint names.
+- Prevented object-key collisions during offline comparison.
+- Database, object-type, and script retrieval now run asynchronously to keep the main window responsive.
+- Bounded regular-expression search duration to avoid excessively slow searches.
+- Connection strings now safely handle special characters in credentials.
+- Added CSV and tab-delimited export for query result grids.
+- Improved SQL syntax highlighting performance.
+
 ## [v2.6.7.0]
 - Clear database dropdown when switching authentication modes
 - Add alternating row colors to all DataGridView controls for better readability

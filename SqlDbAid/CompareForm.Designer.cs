@@ -1,4 +1,4 @@
-﻿namespace SqlDbAid
+namespace SqlDbAid
 {
     partial class CompareForm
     {
@@ -56,6 +56,7 @@
             this.chkIgnoreCase = new System.Windows.Forms.CheckBox();
             this.chkIgnoreEmptyLines = new System.Windows.Forms.CheckBox();
             this.chkHideMatches = new System.Windows.Forms.CheckBox();
+            this.chkIgnoreSystemNames = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
             this.datagridMenu.SuspendLayout();
             this.resultStatusStrip.SuspendLayout();
@@ -353,6 +354,18 @@
             this.chkHideMatches.Text = "Hide Matches";
             this.chkHideMatches.UseVisualStyleBackColor = true;
             // 
+            // chkIgnoreSystemNames
+            //
+            this.chkIgnoreSystemNames.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.chkIgnoreSystemNames.AutoSize = true;
+            this.chkIgnoreSystemNames.Location = new System.Drawing.Point(342, 325);
+            this.chkIgnoreSystemNames.Name = "chkIgnoreSystemNames";
+            this.chkIgnoreSystemNames.Size = new System.Drawing.Size(126, 17);
+            this.chkIgnoreSystemNames.TabIndex = 7;
+            this.chkIgnoreSystemNames.Text = "Ignore System Names";
+            this.chkIgnoreSystemNames.UseVisualStyleBackColor = true;
+            this.tltCompare.SetToolTip(this.chkIgnoreSystemNames, "Ignore SQL Server-generated DF, PK, FK, UQ, and CK names ending in an 8-digit hexadecimal suffix.");
+            //
             // CompareForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -362,6 +375,7 @@
             this.Controls.Add(this.chkIgnoreEmptyLines);
             this.Controls.Add(this.resultStatusStrip);
             this.Controls.Add(this.chkHideMatches);
+            this.Controls.Add(this.chkIgnoreSystemNames);
             this.Controls.Add(this.btnCompare);
             this.Controls.Add(this.splitMain);
             this.MinimumSize = new System.Drawing.Size(600, 400);
@@ -413,5 +427,6 @@
         private System.Windows.Forms.CheckBox chkIgnoreCase;
         private System.Windows.Forms.CheckBox chkIgnoreEmptyLines;
         private System.Windows.Forms.CheckBox chkHideMatches;
+        private System.Windows.Forms.CheckBox chkIgnoreSystemNames;
     }
 }

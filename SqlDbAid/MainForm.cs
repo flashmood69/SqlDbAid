@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
@@ -20,9 +21,13 @@ namespace SqlDbAid
         private bool mCheckAll = false;
         private bool mHasXeSessions = false;
         private bool mHasMSDB = false;
+        private bool mLoadingDatabases = false;
+        private bool mRefreshingCode = false;
+        private bool mIsClosing = false;
 
         private int mCurrentRow = -1;
         private int mQryCount = 1;
+        private int mObjectTypeLoadVersion = 0;
 
         private string mTitleFormat = "{0}.{1} ({2} - {3})";
         private string mDbName = "";
@@ -30,10 +35,6 @@ namespace SqlDbAid
         private BindingSource mDatabaseBinding;
         //private BindingSource mObjTypeBinding;
         private BindingSource mObjCodeBinding;
-
-        private SqlDataAdapter mDatabaseAdapter;
-        private SqlDataAdapter mObjTypeAdapter;
-        private SqlDataAdapter mObjCodeAdapter;
 
         #endregion
 
@@ -67,6 +68,13 @@ namespace SqlDbAid
             }
         }
 
+        private sealed class DatabaseLoadResult
+        {
+            public DataTable Databases { get; set; }
+            public bool HasXeSessions { get; set; }
+            public bool HasMsdb { get; set; }
+        }
+
         #endregion
 
         #region Routines
@@ -88,79 +96,43 @@ namespace SqlDbAid
 
         private string BuildConnectionString(string initialCatalog)
         {
-            string connString = "Data Source=" + Properties.Settings.Default.MwnServer;
-
-            connString += ";Connection Timeout=" + Properties.Settings.Default.QrsConnectionTimeout.ToString();
-
-            if (initialCatalog != "")
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder
             {
-                connString += ";Initial Catalog=" + initialCatalog;
-            }
+                ["Data Source"] = Properties.Settings.Default.MwnServer,
+                ["Connect Timeout"] = Properties.Settings.Default.QrsConnectionTimeout
+            };
 
             string authMode = Properties.Settings.Default.MwnAuthenticationMode;
             
             switch (authMode)
             {
                 case "Windows Authentication":
-                    connString += ";Integrated Security=true";
+                    builder.IntegratedSecurity = true;
                     break;
                 case "SQL Server Authentication":
-                    connString += ";User Id=" + Properties.Settings.Default.MwnUsername + ";Password=" + txtPassword.Text;
+                    builder["User ID"] = Properties.Settings.Default.MwnUsername;
+                    builder["Password"] = txtPassword.Text;
                     break;
                 case "Microsoft Entra Password":
-                    connString += ";Authentication=Active Directory Password";
+                    builder["Authentication"] = "Active Directory Password";
+                    builder["Password"] = txtPassword.Text;
                     if (!string.IsNullOrEmpty(Properties.Settings.Default.MwnUsername))
                     {
-                        connString += ";User Id=" + Properties.Settings.Default.MwnUsername;
+                        builder["User ID"] = Properties.Settings.Default.MwnUsername;
                     }
                     break;
                 default:
                     // Default to Windows Authentication for backward compatibility
-                    connString += ";Integrated Security=true";
+                    builder.IntegratedSecurity = true;
                     break;
             }
 
-            return connString;
-        }
-
-        private bool XeSessionsCheck()
-        {
-            try
+            if (!string.IsNullOrEmpty(initialCatalog))
             {
-                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
-                {
-                    SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.HasXeSessions), cnn);
-                    cnn.Open();
-
-                    cmd.ExecuteNonQuery();
-                }
-
-                return true;
+                builder["Initial Catalog"] = initialCatalog;
             }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
 
-        private bool MsdbCheck()
-        {
-            try
-            {
-                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
-                {
-                    SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.HasMSDB), cnn);
-                    cnn.Open();
-
-                    cmd.ExecuteNonQuery();
-                }
-
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            return builder.ConnectionString;
         }
 
         private bool RunnableQuery(int compatibilityLevel, bool checkViewServerStateRights, bool checkViewDatabaseStateRights, string dbName)
@@ -219,11 +191,16 @@ namespace SqlDbAid
 
         private bool FeatureQuery(QueryHelper.QueryId queryId, string objectName, string columnName)
         {
+            return FeatureQuery(BuildConnectionString(mDbName), queryId, objectName, columnName);
+        }
+
+        private static bool FeatureQuery(string connectionString, QueryHelper.QueryId queryId, string objectName, string columnName)
+        {
             bool supported = false;
 
             try
             {
-                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                using (SqlConnection cnn = new SqlConnection(connectionString))
                 {
                     SqlCommand cmd = new SqlCommand(string.Format(QueryHelper.Query(queryId), objectName, columnName), cnn);
                     cnn.Open();
@@ -243,64 +220,195 @@ namespace SqlDbAid
             return supported;
         }
 
-        private void RefreshCode()
+        private static bool DatabaseQueryAvailable(string connectionString, QueryHelper.QueryId queryId)
         {
-            if (chlObjType.Items.Count > 0)
+            try
             {
-                lblCount.Text = "";
-
-                try
+                using (SqlConnection cnn = new SqlConnection(connectionString))
+                using (SqlCommand cmd = new SqlCommand(QueryHelper.Query(queryId), cnn))
                 {
-                    this.Cursor = Cursors.WaitCursor;
+                    cnn.Open();
+                    cmd.ExecuteNonQuery();
+                }
 
-                    using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static DatabaseLoadResult LoadDatabaseList(string connectionString, string hideSystemDbs, int executionTimeout)
+        {
+            DataTable databases = new DataTable();
+
+            using (SqlConnection cnn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(string.Format(QueryHelper.Query(QueryHelper.QueryId.GuiDatabase), hideSystemDbs), cnn))
+            using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+            {
+                cmd.CommandTimeout = executionTimeout;
+                adapter.Fill(databases);
+            }
+
+            return new DatabaseLoadResult
+            {
+                Databases = databases,
+                HasXeSessions = DatabaseQueryAvailable(connectionString, QueryHelper.QueryId.HasXeSessions),
+                HasMsdb = DatabaseQueryAvailable(connectionString, QueryHelper.QueryId.HasMSDB)
+            };
+        }
+
+        private static DataTable LoadObjectTypes(string connectionString, int executionTimeout)
+        {
+            DataTable table = new DataTable();
+
+            using (SqlConnection cnn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.GuiObjType), cnn))
+            using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+            {
+                cmd.CommandTimeout = executionTimeout;
+                adapter.Fill(table);
+            }
+
+            return table;
+        }
+
+        private async Task RefreshCode()
+        {
+            if (chlObjType.Items.Count == 0 || mRefreshingCode)
+            {
+                return;
+            }
+
+            mRefreshingCode = true;
+            lblCount.Text = "Loading...";
+
+            string connectionString = BuildConnectionString(mDbName);
+            string databaseName = mDbName;
+            int executionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
+            string indexSetting = Properties.Settings.Default.ScrIncludeIndexes ? "Y" : "N";
+            string searchText = txtContains.Text;
+            bool useRegex = chkRegex.Checked;
+            StringBuilder typeFilter = new StringBuilder("#");
+            foreach (CheckedComboBoxItem item in chlObjType.CheckedItems)
+            {
+                typeFilter.Append(item.Value).Append("#");
+            }
+
+            bool serverEnabled = cmbServer.Enabled;
+            bool databaseEnabled = cmbDatabase.Enabled;
+            bool authEnabled = cmbAuthMode.Enabled;
+            bool objectTypesEnabled = chlObjType.Enabled;
+            bool searchEnabled = txtContains.Enabled;
+            bool regexEnabled = chkRegex.Enabled;
+            bool refreshEnabled = btnRefresh.Enabled;
+
+            cmbServer.Enabled = false;
+            cmbDatabase.Enabled = false;
+            cmbAuthMode.Enabled = false;
+            chlObjType.Enabled = false;
+            txtContains.Enabled = false;
+            chkRegex.Enabled = false;
+            btnRefresh.Enabled = false;
+            Cursor = Cursors.WaitCursor;
+
+            try
+            {
+                DataTable resultTable = await Task.Run(() =>
+                {
+                    string filter = FeatureQuery(connectionString, QueryHelper.QueryId.FeatureTest, "indexes", "filter_definition") ? "" : "--";
+
+                    using (SqlConnection cnn = new SqlConnection(connectionString))
                     {
-                        string filter = (FeatureQuery(QueryHelper.QueryId.FeatureTest, "indexes", "filter_definition")) ? "" : "--";
-
                         SqlCommand cmd = new SqlCommand(string.Format(QueryHelper.Query(QueryHelper.QueryId.GuiObjCode), filter), cnn);
-                        cmd.CommandTimeout = Properties.Settings.Default.QrsExecutionTimeout;
-
-                        StringBuilder sb = new StringBuilder("#");
-                        foreach (CheckedComboBoxItem item in chlObjType.CheckedItems)
-                        {
-                            sb.Append(item.Value).Append("#");
-                        }
-
-                        cmd.Parameters.Add(new SqlParameter("@type", sb.ToString()));
-                        cmd.Parameters.Add(new SqlParameter("@index", (Properties.Settings.Default.ScrIncludeIndexes ? "Y" : "N")));
+                        cmd.CommandTimeout = executionTimeout;
+                        cmd.Parameters.Add(new SqlParameter("@type", typeFilter.ToString()));
+                        cmd.Parameters.Add(new SqlParameter("@index", indexSetting));
                         //cmd.Parameters.Add(new SqlParameter("@contains", txtContains.Text.Replace("[", "[[]").Replace("_", "[_]")));
                         cmd.Parameters.Add(new SqlParameter("@contains", ""));
 
-                        mObjCodeAdapter = new SqlDataAdapter(cmd);
                         DataTable table = new DataTable();
-                        mObjCodeAdapter.Fill(table);
-
-                        if (txtContains.Text != "")
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                         {
-                            string search = (chkRegex.Checked) ? txtContains.Text : Regex.Escape(txtContains.Text);
+                            adapter.Fill(table);
+                        }
+
+                        if (!string.IsNullOrEmpty(searchText))
+                        {
+                            string search = useRegex ? searchText : Regex.Escape(searchText);
+                            Regex codeRegex = new Regex(
+                                search,
+                                RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase,
+                                TimeSpan.FromMilliseconds(250));
+                            DateTime searchDeadline = DateTime.UtcNow.AddSeconds(30);
 
                             foreach (DataRow row in table.Rows)
                             {
-                                if (!Regex.IsMatch(row["code"].ToString(), search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase))
+                                if (DateTime.UtcNow > searchDeadline)
+                                {
+                                    throw new TimeoutException("The search exceeded the 30 second limit. Please narrow the search or simplify the pattern.");
+                                }
+
+                                if (!codeRegex.IsMatch(row["code"].ToString()))
                                 {
                                     row.Delete();
                                 }
                             }
                         }
 
-                        mObjCodeBinding.DataSource = table;
+                        return table;
                     }
+                });
 
-                    this.Cursor = Cursors.Default;
-                }
-                catch (Exception ex)
+                if (!mIsClosing && !IsDisposed && databaseName == mDbName)
                 {
-                    this.Cursor = Cursors.Default;
-
+                    mObjCodeBinding.DataSource = resultTable;
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                if (!mIsClosing && !IsDisposed)
+                {
+                    MessageBox.Show("A regular expression match exceeded the 250 ms limit. Please simplify the pattern.", "Search", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (TimeoutException ex)
+            {
+                if (!mIsClosing && !IsDisposed)
+                {
+                    MessageBox.Show(ex.Message, "Search", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                if (!mIsClosing && !IsDisposed)
+                {
+                    MessageBox.Show("Invalid search pattern: " + ex.Message, "Search", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!mIsClosing && !IsDisposed)
+                {
                     MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-
-                UpdateControlStatus();
+            }
+            finally
+            {
+                mRefreshingCode = false;
+                if (!mIsClosing && !IsDisposed)
+                {
+                    Cursor = Cursors.Default;
+                    cmbServer.Enabled = serverEnabled;
+                    cmbDatabase.Enabled = databaseEnabled;
+                    cmbAuthMode.Enabled = authEnabled;
+                    chlObjType.Enabled = objectTypesEnabled;
+                    txtContains.Enabled = searchEnabled;
+                    chkRegex.Enabled = regexEnabled;
+                    btnRefresh.Enabled = refreshEnabled;
+                    UpdateControlStatus();
+                }
             }
         }
 
@@ -875,6 +983,7 @@ namespace SqlDbAid
 
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            mIsClosing = true;
             Properties.Settings.Default.MwnServer = cmbServer.Text;
             Properties.Settings.Default.MwnUsername = txtUsername.Text;
             Properties.Settings.Default.MwnAuthenticationMode = cmbAuthMode.SelectedItem.ToString();
@@ -895,68 +1004,111 @@ namespace SqlDbAid
             Properties.Settings.Default.MwnServer = cmbServer.Text;
         }
 
-        private void cmbDatabase_DropDown(object sender, EventArgs e)
+        private async void cmbDatabase_DropDown(object sender, EventArgs e)
         {
+            if (mLoadingDatabases)
+            {
+                return;
+            }
+
+            mLoadingDatabases = true;
+            string hideSystemDbs = Properties.Settings.Default.ScrHideSystemDbs ? "" : "--";
+            int executionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
+            bool serverEnabled = cmbServer.Enabled;
+            bool authEnabled = cmbAuthMode.Enabled;
+            cmbServer.Enabled = false;
+            cmbAuthMode.Enabled = false;
+            Cursor = Cursors.WaitCursor;
+            bool databaseListLoaded = false;
+
             try
             {
-                this.Cursor = Cursors.WaitCursor;
-
-                mDatabaseBinding = new BindingSource();
-                cmbDatabase.DataSource = mDatabaseBinding;
-
-                using (SqlConnection cnn = new SqlConnection(BuildConnectionString("")))
+                string connectionString = BuildConnectionString("");
+                DatabaseLoadResult result = await Task.Run(() => LoadDatabaseList(connectionString, hideSystemDbs, executionTimeout));
+                if (mIsClosing || IsDisposed)
                 {
-                    string hideSystemDbs = Properties.Settings.Default.ScrHideSystemDbs ? "" : "--";
-
-                    SqlCommand cmd = new SqlCommand(string.Format(QueryHelper.Query(QueryHelper.QueryId.GuiDatabase), hideSystemDbs), cnn);
-                    cmd.CommandTimeout = Properties.Settings.Default.QrsExecutionTimeout;
-
-                    mDatabaseAdapter = new SqlDataAdapter(cmd);
-                    DataTable table = new DataTable();
-                    mDatabaseAdapter.Fill(table);
-                    mDatabaseBinding.DataSource = table;
-                    cmbDatabase.DisplayMember = "database_name";
-                    cmbDatabase.ValueMember = "id";
+                    return;
                 }
 
-                mHasXeSessions = XeSessionsCheck();
-                mHasMSDB = MsdbCheck();
-
-                this.Cursor = Cursors.Default;
+                mHasXeSessions = result.HasXeSessions;
+                mHasMSDB = result.HasMsdb;
+                mDatabaseBinding = new BindingSource();
+                mDatabaseBinding.DataSource = result.Databases;
+                cmbDatabase.DataSource = mDatabaseBinding;
+                cmbDatabase.DisplayMember = "database_name";
+                cmbDatabase.ValueMember = "id";
+                databaseListLoaded = true;
             }
             catch (Exception ex)
             {
-                this.Cursor = Cursors.Default;
+                if (mIsClosing || IsDisposed)
+                {
+                    return;
+                }
 
                 cmbDatabase.DataSource = null;
+                chlObjType.Items.Clear();
+                mDbName = "";
                 ClearCodeView();
-                UpdateControlStatus();
-
                 MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                mLoadingDatabases = false;
+                if (!mIsClosing && !IsDisposed)
+                {
+                    Cursor = Cursors.Default;
+                    cmbServer.Enabled = serverEnabled;
+                    cmbAuthMode.Enabled = authEnabled;
+                    UpdateControlStatus();
+                }
+            }
+
+            if (databaseListLoaded && !mIsClosing && !IsDisposed)
+            {
+                cmbDatabase_SelectedIndexChanged(cmbDatabase, EventArgs.Empty);
             }
         }
 
-        private void cmbDatabase_SelectedIndexChanged(object sender, EventArgs e)
+        private async void cmbDatabase_SelectedIndexChanged(object sender, EventArgs e)
         {
-            chlObjType.Items.Clear();
+            if (mLoadingDatabases || mIsClosing || IsDisposed)
+            {
+                return;
+            }
 
+            int loadVersion = ++mObjectTypeLoadVersion;
+            chlObjType.Items.Clear();
             mDbName = "";
+
+            if (dgvCode.RowCount > 0)
+            {
+                ClearCodeView();
+            }
+            UpdateControlStatus();
 
             if (cmbDatabase.SelectedIndex > 0)
             {
-                mDbName = cmbDatabase.Text;
+                string databaseName = cmbDatabase.Text;
+                int executionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
+                mDbName = databaseName;
+                Cursor = Cursors.WaitCursor;
+                bool loadFailed = false;
+
+                bool serverEnabled = cmbServer.Enabled;
+                bool databaseEnabled = cmbDatabase.Enabled;
+                bool authEnabled = cmbAuthMode.Enabled;
+                cmbServer.Enabled = false;
+                cmbDatabase.Enabled = false;
+                cmbAuthMode.Enabled = false;
 
                 try
                 {
-                    using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                    string connectionString = BuildConnectionString(databaseName);
+                    DataTable table = await Task.Run(() => LoadObjectTypes(connectionString, executionTimeout));
+
+                    if (!mIsClosing && !IsDisposed && loadVersion == mObjectTypeLoadVersion)
                     {
-                        SqlCommand cmd = new SqlCommand(QueryHelper.Query(QueryHelper.QueryId.GuiObjType), cnn);
-                        cmd.CommandTimeout = Properties.Settings.Default.QrsExecutionTimeout;
-
-                        mObjTypeAdapter = new SqlDataAdapter(cmd);
-                        DataTable table = new DataTable();
-                        mObjTypeAdapter.Fill(table);
-
                         foreach (DataRow row in table.Rows)
                         {
                             chlObjType.Items.Add(new CheckedComboBoxItem(row.ItemArray[0].ToString().Trim(), row.ItemArray[1].ToString().Trim()), true);
@@ -965,25 +1117,37 @@ namespace SqlDbAid
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    mDbName = "";
-                    cmbDatabase.SelectedIndex = 0;
+                    if (!mIsClosing && !IsDisposed && loadVersion == mObjectTypeLoadVersion)
+                    {
+                        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        mDbName = "";
+                        loadFailed = true;
+                    }
+                }
+                finally
+                {
+                    if (!mIsClosing && !IsDisposed && loadVersion == mObjectTypeLoadVersion)
+                    {
+                        Cursor = Cursors.Default;
+                        cmbServer.Enabled = serverEnabled;
+                        cmbDatabase.Enabled = databaseEnabled;
+                        cmbAuthMode.Enabled = authEnabled;
+
+                        if (loadFailed)
+                        {
+                            cmbDatabase.SelectedIndex = 0;
+                        }
+
+                        UpdateControlStatus();
+                    }
                 }
             }
-
-            //chlObjType.RefreshList();
-
-            if (dgvCode.RowCount > 0)
-            {
-                ClearCodeView();
-            }
-
             UpdateControlStatus();
         }
 
-        private void btnRefresh_Click(object sender, EventArgs e)
+        private async void btnRefresh_Click(object sender, EventArgs e)
         {
-            RefreshCode();
+            await RefreshCode();
         }
 
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1682,11 +1846,11 @@ namespace SqlDbAid
             Properties.Settings.Default.MwnUsername = txtUsername.Text;
         }
 
-        private void txtContains_KeyPress(object sender, KeyPressEventArgs e)
+        private async void txtContains_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (e.KeyChar == '\r')
             {
-                RefreshCode();
+                await RefreshCode();
             }
         }
 

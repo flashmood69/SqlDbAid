@@ -1,4 +1,4 @@
-﻿namespace SqlDbAid
+namespace SqlDbAid
 {
     partial class CodeForm
     {
@@ -35,6 +35,7 @@
             this.copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pasteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.syntaxHighlightToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.codeStatusStrip = new System.Windows.Forms.StatusStrip();
             this.lblPosition = new System.Windows.Forms.ToolStripStatusLabel();
             this.codeMenu.SuspendLayout();
@@ -67,7 +68,8 @@
             this.cutToolStripMenuItem,
             this.copyToolStripMenuItem,
             this.pasteToolStripMenuItem,
-            this.selectAllToolStripMenuItem});
+            this.selectAllToolStripMenuItem,
+            this.syntaxHighlightToolStripMenuItem});
             this.codeMenu.Name = "codeMenu";
             this.codeMenu.Size = new System.Drawing.Size(123, 92);
             // 
@@ -102,6 +104,13 @@
             this.selectAllToolStripMenuItem.Text = "Select All";
             this.selectAllToolStripMenuItem.Click += new System.EventHandler(this.selectAllToolStripMenuItem_Click);
             // 
+            // syntaxHighlightToolStripMenuItem
+            //
+            this.syntaxHighlightToolStripMenuItem.Name = "syntaxHighlightToolStripMenuItem";
+            this.syntaxHighlightToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.syntaxHighlightToolStripMenuItem.Text = "Highlight SQL";
+            this.syntaxHighlightToolStripMenuItem.Click += new System.EventHandler(this.syntaxHighlightToolStripMenuItem_Click);
+            //
             // codeStatusStrip
             // 
             this.codeStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -145,6 +154,7 @@
         private System.Windows.Forms.ToolStripMenuItem copyToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pasteToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectAllToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem syntaxHighlightToolStripMenuItem;
         private System.Windows.Forms.StatusStrip codeStatusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblPosition;
 

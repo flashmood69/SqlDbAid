@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Windows.Forms;
 
 namespace SqlDbAid
 {
     class SqlHighlighter
     {
-        private Dictionary<string, Color> mKW;
+        private static readonly Dictionary<string, Color> mKW;
 
         private static readonly Color COL_OPERATOR = Color.Gray;
         private static readonly Color COL_TYPE = Color.BlueViolet;
@@ -18,9 +18,9 @@ namespace SqlDbAid
         private static readonly Color COL_STRING = Color.Red;
         private static readonly Color COL_NORMAL = Color.Black;
 
-        public SqlHighlighter()
+        static SqlHighlighter()
         {
-            mKW = new Dictionary<string, Color>
+            mKW = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
             {
                 // Variables / Functions
                 { "@@CONNECTIONS", COL_VARFUN },
@@ -721,69 +721,227 @@ namespace SqlDbAid
 
         public void Highlight(RichTextBox rtbCode)
         {
-            rtbCode.SelectionStart = 0;
-            rtbCode.SelectionLength = rtbCode.Text.Length;
-            rtbCode.SelectionBackColor = rtbCode.BackColor;
-            rtbCode.SelectionColor = rtbCode.ForeColor;
+            string text = rtbCode.Text;
+            StringBuilder rtf = CreateRtfHeader(rtbCode, text.Length + 256);
 
-            Regex r = new Regex(@"([\n\[\](),;'""])|(\s+)|(--)|(/\*)|(\*/)|([!=<>\+\-\*/%&\|\^])");
-
-            String[] tokens = r.Split(rtbCode.Text);
-
-            string openToken = "";
-
-            int pos = 0;
-            int selStart = 0;
-
-            foreach (string currentToken in tokens)
+            int position = 0;
+            int plainTextStart = 0;
+            while (position < text.Length)
             {
-                string token = currentToken.Replace("\t", "").Replace(" ", "");
+                int tokenStart = position;
+                int colorIndex = 0;
+                char current = text[position];
 
-                if (token != "")
+                if (current == '-' && position + 1 < text.Length && text[position + 1] == '-')
                 {
-                    if (openToken != "")
+                    position += 2;
+                    while (position < text.Length && text[position] != '\n')
                     {
-                        if
-                            (
-                                (token == "*/" && openToken == "/*") ||
-                                (token == "\n" && openToken == "--") ||
-                                (token == "'" && openToken == "'") ||
-                                (token == "\"" && openToken == "\"") ||
-                                (token == "]" && openToken == "[")
-                            )
-                        {
-                            rtbCode.Select(selStart, pos - selStart + token.Length);
-                            if (token == "]")
-                            {
-                                rtbCode.SelectionColor = COL_NORMAL;
-                            }
-                            else if (token == "'" || token == "\"")
-                            {
-                                rtbCode.SelectionColor = COL_STRING;
-                            }
-                            else
-                            {
-                                rtbCode.SelectionColor = COL_COMMENT;
-                            }
-                            openToken = "";
-                        }
+                        position++;
                     }
-                    else if ((token == "/*" || token == "--" || token == "'" || token == "\"" || token == "[") && openToken == "")
+                    if (position < text.Length)
                     {
-                        openToken = token;
-                        selStart = pos;
+                        position++;
+                    }
+                    colorIndex = 3;
+                }
+                else if (current == '/' && position + 1 < text.Length && text[position + 1] == '*')
+                {
+                    position += 2;
+                    while (position + 1 < text.Length &&
+                        !(text[position] == '*' && text[position + 1] == '/'))
+                    {
+                        position++;
+                    }
+                    if (position + 1 < text.Length)
+                    {
+                        position += 2;
                     }
                     else
                     {
-                        if (mKW.TryGetValue(token.ToUpper(), out Color color))
+                        position = text.Length;
+                    }
+                    colorIndex = 3;
+                }
+                else if (current == '\'' || current == '"')
+                {
+                    char quote = current;
+                    position++;
+                    while (position < text.Length)
+                    {
+                        if (text[position] == quote)
                         {
-                            rtbCode.Select(pos, token.Length);
-                            rtbCode.SelectionColor = color;
+                            position++;
+                            if (position < text.Length && text[position] == quote)
+                            {
+                                position++;
+                                continue;
+                            }
+                            break;
                         }
+                        position++;
+                    }
+                    colorIndex = 4;
+                }
+                else if (current == '[')
+                {
+                    position++;
+                    while (position < text.Length && text[position] != ']')
+                    {
+                        position++;
+                    }
+                    if (position < text.Length)
+                    {
+                        position++;
+                    }
+                    colorIndex = 2;
+                }
+                else if (IsTokenDelimiter(current))
+                {
+                    position++;
+                }
+                else
+                {
+                    position++;
+                    while (position < text.Length && !IsTokenDelimiter(text[position]) &&
+                        !(text[position] == '-' && position + 1 < text.Length && text[position + 1] == '-') &&
+                        !(text[position] == '/' && position + 1 < text.Length && text[position + 1] == '*'))
+                    {
+                        position++;
+                    }
+
+                    Color color;
+                    if (mKW.TryGetValue(text.Substring(tokenStart, position - tokenStart), out color))
+                    {
+                        colorIndex = GetColorIndex(color);
                     }
                 }
-                pos = pos + currentToken.Length;
+
+                if (colorIndex != 0)
+                {
+                    AppendRtfText(rtf, text, plainTextStart, tokenStart - plainTextStart);
+                    rtf.Append("\\cf").Append(colorIndex).Append(' ');
+                    AppendRtfText(rtf, text, tokenStart, position - tokenStart);
+                    rtf.Append("\\cf1 ");
+                    plainTextStart = position;
+                }
             }
+
+            AppendRtfText(rtf, text, plainTextStart, text.Length - plainTextStart);
+            rtf.Append('}');
+
+            rtbCode.Rtf = rtf.ToString();
+            rtbCode.Select(0, 0);
+            rtbCode.Invalidate();
+        }
+
+        private static StringBuilder CreateRtfHeader(RichTextBox rtbCode, int capacity)
+        {
+            Color[] colors =
+            {
+                rtbCode.ForeColor,
+                COL_NORMAL,
+                COL_COMMENT,
+                COL_STRING,
+                COL_KEYWORD,
+                COL_OPERATOR,
+                COL_TYPE,
+                COL_VARFUN
+            };
+            StringBuilder rtf = new StringBuilder(capacity);
+            rtf.Append(@"{\rtf1\ansi\deff0\uc1{\fonttbl{\f0\fcharset0 ");
+            AppendRtfFontName(rtf, rtbCode.Font.Name);
+            rtf.Append(@";}}{\colortbl ;");
+            foreach (Color color in colors)
+            {
+                rtf.Append(@"\red").Append(color.R)
+                    .Append(@"\green").Append(color.G)
+                    .Append(@"\blue").Append(color.B).Append(';');
+            }
+            rtf.Append(@"}\viewkind4\pard\f0\fs")
+                .Append((int)Math.Round(rtbCode.Font.Size * 2))
+                .Append(@"\cf1 ");
+
+            FontStyle fontStyle = rtbCode.Font.Style;
+            rtf.Append(fontStyle.HasFlag(FontStyle.Bold) ? @"\b " : @"\b0 ");
+            rtf.Append(fontStyle.HasFlag(FontStyle.Italic) ? @"\i " : @"\i0 ");
+            rtf.Append(fontStyle.HasFlag(FontStyle.Underline) ? @"\ul " : @"\ul0 ");
+            rtf.Append(fontStyle.HasFlag(FontStyle.Strikeout) ? @"\strike " : @"\strike0 ");
+            return rtf;
+        }
+
+        private static void AppendRtfFontName(StringBuilder rtf, string fontName)
+        {
+            foreach (char value in fontName)
+            {
+                if (value == '\\' || value == '{' || value == '}')
+                {
+                    rtf.Append('\\');
+                }
+                rtf.Append(value);
+            }
+        }
+
+        private static void AppendRtfText(StringBuilder rtf, string text, int start, int length)
+        {
+            int end = start + length;
+            for (int i = start; i < end; i++)
+            {
+                char value = text[i];
+                switch (value)
+                {
+                    case '\\':
+                    case '{':
+                    case '}':
+                        rtf.Append('\\').Append(value);
+                        break;
+                    case '\r':
+                        if (i + 1 < end && text[i + 1] == '\n')
+                        {
+                            i++;
+                        }
+                        rtf.Append(@"\par ");
+                        break;
+                    case '\n':
+                        rtf.Append(@"\par ");
+                        break;
+                    case '\t':
+                        rtf.Append(@"\tab ");
+                        break;
+                    default:
+                        if (value < 32 || value > 126)
+                        {
+                            rtf.Append(@"\u").Append(unchecked((short)value)).Append('?');
+                        }
+                        else
+                        {
+                            rtf.Append(value);
+                        }
+                        break;
+                }
+            }
+        }
+
+        private static int GetColorIndex(Color color)
+        {
+            if (color == COL_NORMAL) return 2;
+            if (color == COL_COMMENT) return 3;
+            if (color == COL_STRING) return 4;
+            if (color == COL_KEYWORD) return 5;
+            if (color == COL_OPERATOR) return 6;
+            if (color == COL_TYPE) return 7;
+            if (color == COL_VARFUN) return 8;
+            return 1;
+        }
+
+        private static bool IsTokenDelimiter(char value)
+        {
+            return char.IsWhiteSpace(value) ||
+                value == '[' || value == ']' || value == '(' || value == ')' ||
+                value == ',' || value == ';' || value == '\'' || value == '"' ||
+                value == '=' || value == '!' || value == '<' || value == '>' ||
+                value == '+' || value == '-' || value == '*' || value == '/' ||
+                value == '%' || value == '&' || value == '|' || value == '^';
         }
 
     }

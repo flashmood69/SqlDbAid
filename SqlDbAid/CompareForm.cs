@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.IO;
@@ -32,8 +32,31 @@ namespace SqlDbAid
 
         DataTable dtLeft;
         DataTable dtRight;
-        Hashtable htLeft;
-        Hashtable htRight;
+        Dictionary<string, int> htLeft;
+        Dictionary<string, int> htRight;
+
+        private static readonly Regex SystemConstraintNameRegex = new Regex(
+            @"(?<![A-Za-z0-9_])(?:\[(?:DF|PK|FK|UQ|CK)__[^\]\r\n]*__[0-9A-F]{8}\]|(?:DF|PK|FK|UQ|CK)__[A-Za-z0-9_$#@]*__[0-9A-F]{8})(?![A-Za-z0-9_])",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static string ObjectKey(string type, string schema, string name)
+        {
+            return string.Format("{0}:{1}{2}:{3}{4}:{5}", type.Length, type, schema.Length, schema, name.Length, name);
+        }
+
+        private static string NormalizeSystemConstraintNames(string sql)
+        {
+            return SystemConstraintNameRegex.Replace(sql, match =>
+            {
+                string name = match.Value;
+                if (name.StartsWith("[", StringComparison.Ordinal))
+                {
+                    name = name.Substring(1);
+                }
+
+                return "[" + name.Substring(0, 2).ToUpperInvariant() + "__00000000]";
+            });
+        }
 
         public CompareForm()
         {
@@ -107,27 +130,20 @@ namespace SqlDbAid
 
             ClearCompare();
 
-            htLeft = new Hashtable();
-            htRight = new Hashtable();
+            StringComparer keyComparer = chkIgnoreCase.Checked ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            htLeft = new Dictionary<string, int>(keyComparer);
+            htRight = new Dictionary<string, int>(keyComparer);
 
             for (int i = 0; i < dtLeft.Rows.Count; i++)
             {
-                string src = string.Format("{0}{1}{2}", dtLeft.Rows[i]["obj_type"].ToString(), dtLeft.Rows[i]["obj_schema"].ToString(), dtLeft.Rows[i]["obj_name"].ToString());
-                if (chkIgnoreCase.Checked)
-                {
-                    src = src.ToLower();
-                }
+                string src = ObjectKey(dtLeft.Rows[i]["obj_type"].ToString(), dtLeft.Rows[i]["obj_schema"].ToString(), dtLeft.Rows[i]["obj_name"].ToString());
 
                 htLeft.Add(src, i);
             }
 
             for (int i = 0; i < dtRight.Rows.Count; i++)
             {
-                string src = string.Format("{0}{1}{2}", dtRight.Rows[i]["obj_type"].ToString(), dtRight.Rows[i]["obj_schema"].ToString(), dtRight.Rows[i]["obj_name"].ToString());
-                if (chkIgnoreCase.Checked)
-                {
-                    src = src.ToLower();
-                }
+                string src = ObjectKey(dtRight.Rows[i]["obj_type"].ToString(), dtRight.Rows[i]["obj_schema"].ToString(), dtRight.Rows[i]["obj_name"].ToString());
 
                 htRight.Add(src, i);
             }
@@ -141,11 +157,7 @@ namespace SqlDbAid
 
             for (int i = 0; i < dtLeft.Rows.Count; i++)
             {
-                string src = string.Format("{0}{1}{2}", dtLeft.Rows[i]["obj_type"].ToString(), dtLeft.Rows[i]["obj_schema"].ToString(), dtLeft.Rows[i]["obj_name"].ToString());
-                if (chkIgnoreCase.Checked)
-                {
-                    src = src.ToLower();
-                }
+                string src = ObjectKey(dtLeft.Rows[i]["obj_type"].ToString(), dtLeft.Rows[i]["obj_schema"].ToString(), dtLeft.Rows[i]["obj_name"].ToString());
 
                 if (!htRight.ContainsKey(src))
                 {
@@ -164,11 +176,7 @@ namespace SqlDbAid
 
             for (int i = 0; i < dtRight.Rows.Count; i++)
             {
-                string src = string.Format("{0}{1}{2}", dtRight.Rows[i]["obj_type"].ToString(), dtRight.Rows[i]["obj_schema"].ToString(), dtRight.Rows[i]["obj_name"].ToString());
-                if (chkIgnoreCase.Checked)
-                {
-                    src = src.ToLower();
-                }
+                string src = ObjectKey(dtRight.Rows[i]["obj_type"].ToString(), dtRight.Rows[i]["obj_schema"].ToString(), dtRight.Rows[i]["obj_name"].ToString());
 
                 if (!htLeft.ContainsKey(src))
                 {
@@ -189,6 +197,12 @@ namespace SqlDbAid
 
                     string left = dtLeft.Rows[j]["code"].ToString();
                     string right = dtRight.Rows[i]["code"].ToString();
+
+                    if (chkIgnoreSystemNames.Checked)
+                    {
+                        left = NormalizeSystemConstraintNames(left);
+                        right = NormalizeSystemConstraintNames(right);
+                    }
 
                     if (chkIgnoreCase.Checked && chkIgnoreEmptyLines.Checked)
                     {
@@ -251,22 +265,27 @@ namespace SqlDbAid
                 cmpSql.LeftText = "";
                 cmpSql.RightText = "";
 
-                string src = string.Format("{0}{1}{2}", dgvResult.Rows[mCurrentRow].Cells["Type"].Value.ToString(), dgvResult.Rows[mCurrentRow].Cells["Schema"].Value.ToString(), dgvResult.Rows[mCurrentRow].Cells["Name"].Value.ToString());
-                if (chkIgnoreCase.Checked)
-                {
-                    src = src.ToLower();
-                }
+                string src = ObjectKey(
+                    dgvResult.Rows[mCurrentRow].Cells["Type"].Value.ToString(),
+                    dgvResult.Rows[mCurrentRow].Cells["Schema"].Value.ToString(),
+                    dgvResult.Rows[mCurrentRow].Cells["Name"].Value.ToString());
 
                 if (htLeft.ContainsKey(src))
                 {
                     int i = (int)htLeft[src];
-                    cmpSql.LeftText = dtLeft.Rows[i]["code"].ToString();
+                    string leftText = dtLeft.Rows[i]["code"].ToString();
+                    cmpSql.LeftText = chkIgnoreSystemNames.Checked
+                        ? NormalizeSystemConstraintNames(leftText)
+                        : leftText;
                 }
 
                 if (htRight.ContainsKey(src))
                 {
                     int i = (int)htRight[src];
-                    cmpSql.RightText = dtRight.Rows[i]["code"].ToString();
+                    string rightText = dtRight.Rows[i]["code"].ToString();
+                    cmpSql.RightText = chkIgnoreSystemNames.Checked
+                        ? NormalizeSystemConstraintNames(rightText)
+                        : rightText;
                 }
 
                 cmpSql.CaseSensitive = !chkIgnoreCase.Checked;

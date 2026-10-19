@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Drawing;
-//using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -8,15 +7,26 @@ namespace SqlDbAid
 {
     public partial class CodeForm : Form
     {
+        private const int CODE_CHUNK_SIZE = 65536;
+        private const int MAX_AUTOMATIC_SYNTAX_LENGTH = 100000;
+
         private string searchText = "";
+        private string pendingCode = string.Empty;
+        private string codeText = string.Empty;
+        private int pendingCodePosition;
         private bool useRegex = false;
 
         private SqlHighlighter sqlHL = new SqlHighlighter();
+        private Timer highlightTimer;
 
         private MatchCollection matchColl;
         private int currentMatch = -1;
 
         private bool highlighting = true;
+        private bool searchHighlightApplied;
+        private bool formShown;
+        private bool searchMatchesInitialized;
+        private bool syntaxColorsEnabled = true;
 
         private static DialogResult InputBox(string title, string promptText, ref string value, ref bool regex)
         {
@@ -68,19 +78,6 @@ namespace SqlDbAid
             return dialogResult;
         }
 
-        private const int WM_SETREDRAW = 0x000B;
-        private const int WM_USER = 0x400;
-        private const int EM_GETEVENTMASK = WM_USER + 59;
-        private const int EM_SETEVENTMASK = WM_USER + 69;
-        private const int EM_GETSCROLLPOS = WM_USER + 221;
-        private const int EM_SETSCROLLPOS = WM_USER + 222;
-
-        //[DllImport("user32")]
-        //private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, IntPtr lParam);
-
-        //[DllImport("user32")]
-        //private extern static IntPtr SendMessage(IntPtr hWnd, Int32 wMsg, Int32 wParam, ref Point lParam);
-
         private void SelectNext()
         {
             if (matchColl != null && matchColl.Count > 0)
@@ -92,7 +89,10 @@ namespace SqlDbAid
                     currentMatch = 0;
                 }
 
-                rtbCode.Select(matchColl[currentMatch].Index, 0);
+                int selectionLength = codeText.Length > MAX_AUTOMATIC_SYNTAX_LENGTH
+                    ? matchColl[currentMatch].Length
+                    : 0;
+                rtbCode.Select(matchColl[currentMatch].Index, selectionLength);
             }
             else
             {
@@ -111,7 +111,10 @@ namespace SqlDbAid
                     currentMatch = matchColl.Count - 1;
                 }
 
-                rtbCode.Select(matchColl[currentMatch].Index, 0);
+                int selectionLength = codeText.Length > MAX_AUTOMATIC_SYNTAX_LENGTH
+                    ? matchColl[currentMatch].Length
+                    : 0;
+                rtbCode.Select(matchColl[currentMatch].Index, selectionLength);
             }
             else
             {
@@ -122,49 +125,56 @@ namespace SqlDbAid
         private void SyntaxHighlight()
         {
             highlighting = true;
-
-            sqlHL.Highlight(rtbCode);
-
-            //search text
-            matchColl = null;
-            currentMatch = -1;
-            if (searchText != "")
+            try
             {
-                string search = (useRegex) ? searchText : Regex.Escape(searchText);
-
-                Regex s = new Regex(search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-                matchColl = s.Matches(rtbCode.Text.ToString());
-                currentMatch = -1;
-
-                foreach (Match match in matchColl)
+                if (searchHighlightApplied)
                 {
-                    rtbCode.Select(match.Index, match.Length);
-                    rtbCode.SelectionBackColor = Color.Yellow;
+                    int selectionStart = rtbCode.SelectionStart;
+                    int selectionLength = rtbCode.SelectionLength;
+                    rtbCode.SelectAll();
+                    rtbCode.SelectionBackColor = rtbCode.BackColor;
+                    rtbCode.Select(selectionStart, selectionLength);
+                    searchHighlightApplied = false;
                 }
-            }
 
-            rtbCode.Invalidate();
-            highlighting = false;
+                UpdateSearchMatches();
+                searchMatchesInitialized = true;
+                if (formShown && codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
+                {
+                    ApplyVisibleSearchHighlights();
+                }
+
+                rtbCode.Invalidate();
+            }
+            finally
+            {
+                highlighting = false;
+            }
         }
 
         public CodeForm()
         {
             InitializeComponent();
+            highlightTimer = new Timer(components);
+            highlightTimer.Interval = 15;
+            highlightTimer.Tick += highlightTimer_Tick;
+            rtbCode.VScroll += rtbCode_VScroll;
+            rtbCode.HScroll += rtbCode_HScroll;
+            rtbCode.MouseWheel += rtbCode_MouseWheel;
+            Shown += CodeForm_Shown;
+            syntaxHighlightToolStripMenuItem.Visible = false;
+            highlighting = false;
         }
 
         public CodeForm(string code, string search, bool regex)
             : this()
         {
-            rtbCode.SelectionStart = 0;
-            rtbCode.Text = code;
-
-            searchText = search;
+            pendingCode = code ?? string.Empty;
+            searchText = search ?? string.Empty;
             useRegex = regex;
-
-            SyntaxHighlight();
-
-            SelectNext();
+            syntaxHighlightToolStripMenuItem.Visible =
+                pendingCode.Length > MAX_AUTOMATIC_SYNTAX_LENGTH;
+            highlighting = false;
         }
 
         private void CodeForm_Load(object sender, EventArgs e)
@@ -172,21 +182,48 @@ namespace SqlDbAid
             int screenHeight = Screen.PrimaryScreen.Bounds.Height;
             int screenWidth = Screen.PrimaryScreen.Bounds.Width;
 
-            int maxWidth = 0;
-            int pos = 0;
-
-            foreach (string line in rtbCode.Lines)
+            int winHeight;
+            int winWidth;
+            if (pendingCode.Length > 20000)
             {
-                pos = pos + line.Length + 1;
-                int width = rtbCode.GetPositionFromCharIndex(pos - 1).X;
-                if (width > maxWidth)
-                {
-                    maxWidth = width;
-                }
+                winHeight = screenHeight - 50;
+                winWidth = screenWidth - 50;
             }
+            else
+            {
+                int maxLineColumns = 0;
+                int currentLineColumns = 0;
+                int lineCount = 1;
+                for (int i = 0; i < pendingCode.Length; i++)
+                {
+                    char current = pendingCode[i];
+                    if (current == '\r' || current == '\n')
+                    {
+                        maxLineColumns = Math.Max(maxLineColumns, currentLineColumns);
+                        currentLineColumns = 0;
+                        lineCount++;
+                        if (current == '\r' && i + 1 < pendingCode.Length && pendingCode[i + 1] == '\n')
+                        {
+                            i++;
+                        }
+                    }
+                    else if (current == '\t')
+                    {
+                        currentLineColumns += 8 - currentLineColumns % 8;
+                    }
+                    else
+                    {
+                        currentLineColumns++;
+                    }
+                }
+                maxLineColumns = Math.Max(maxLineColumns, currentLineColumns);
 
-            int winHeight = rtbCode.GetPositionFromCharIndex(rtbCode.Text.Length).Y + 90;
-            int winWidth = maxWidth + 50;
+                int charWidth = TextRenderer.MeasureText("M", rtbCode.Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+                long estimatedWidth = (long)maxLineColumns * charWidth + 50;
+                long estimatedHeight = (long)lineCount * rtbCode.Font.Height + 90;
+                winHeight = (int)Math.Min(estimatedHeight, int.MaxValue);
+                winWidth = (int)Math.Min(estimatedWidth, int.MaxValue);
+            }
 
             if (winHeight < 300)
             {
@@ -209,6 +246,158 @@ namespace SqlDbAid
             this.Width = winWidth;
         }
 
+        private void CodeForm_Shown(object sender, EventArgs e)
+        {
+            formShown = true;
+            ScheduleVisibleHighlight();
+        }
+
+        private void highlightTimer_Tick(object sender, EventArgs e)
+        {
+            highlightTimer.Stop();
+            if (highlighting)
+            {
+                return;
+            }
+
+            highlighting = true;
+            try
+            {
+                if (pendingCode != null)
+                {
+                    if (!LoadNextCodeChunk())
+                    {
+                        highlightTimer.Start();
+                        return;
+                    }
+
+                    highlightTimer.Interval = 100;
+                }
+
+                if (!searchMatchesInitialized)
+                {
+                    if (codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
+                    {
+                        sqlHL.Highlight(rtbCode);
+                        codeText = rtbCode.Text;
+                    }
+                    else
+                    {
+                        syntaxColorsEnabled = false;
+                        lblPosition.Text = "Syntax colors skipped; right-click to highlight";
+                    }
+
+                    UpdateSearchMatches();
+                    searchMatchesInitialized = true;
+                    SelectNext();
+                    UpdatePositionStatus();
+                }
+
+                if (codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
+                {
+                    ApplyVisibleSearchHighlights();
+                }
+            }
+            finally
+            {
+                highlighting = false;
+            }
+        }
+
+        private bool LoadNextCodeChunk()
+        {
+            int chunkLength = Math.Min(CODE_CHUNK_SIZE, pendingCode.Length - pendingCodePosition);
+            if (chunkLength > 0)
+            {
+                rtbCode.AppendText(pendingCode.Substring(pendingCodePosition, chunkLength));
+                pendingCodePosition += chunkLength;
+            }
+
+            if (pendingCodePosition < pendingCode.Length)
+            {
+                return false;
+            }
+
+            codeText = rtbCode.Text;
+            pendingCode = null;
+            pendingCodePosition = 0;
+            rtbCode.Select(0, 0);
+            return true;
+        }
+
+        private void UpdateSearchMatches()
+        {
+            matchColl = null;
+            currentMatch = -1;
+            searchHighlightApplied = false;
+
+            if (searchText.Length == 0)
+            {
+                return;
+            }
+
+            string search = useRegex ? searchText : Regex.Escape(searchText);
+            Regex regex = new Regex(search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+            matchColl = regex.Matches(codeText);
+            searchHighlightApplied = matchColl.Count > 0 &&
+                codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH;
+        }
+
+        private void ApplyVisibleSearchHighlights()
+        {
+            if (matchColl == null || matchColl.Count == 0)
+            {
+                return;
+            }
+
+            int visibleStart = Math.Max(0, rtbCode.GetCharIndexFromPosition(new Point(1, 1)));
+            int visibleEnd = rtbCode.GetCharIndexFromPosition(
+                new Point(Math.Max(1, rtbCode.ClientSize.Width - 2), Math.Max(1, rtbCode.ClientSize.Height - 2))) + 1;
+            int selectionStart = rtbCode.SelectionStart;
+            int selectionLength = rtbCode.SelectionLength;
+
+            foreach (Match match in matchColl)
+            {
+                if (match.Index >= visibleEnd)
+                {
+                    break;
+                }
+                if (match.Length > 0 && match.Index + match.Length > visibleStart)
+                {
+                    int start = Math.Max(match.Index, visibleStart);
+                    int end = Math.Min(match.Index + match.Length, visibleEnd);
+                    rtbCode.Select(start, end - start);
+                    rtbCode.SelectionBackColor = Color.Yellow;
+                }
+            }
+
+            rtbCode.Select(selectionStart, selectionLength);
+        }
+
+        private void ScheduleVisibleHighlight()
+        {
+            if (formShown && !highlighting)
+            {
+                highlightTimer.Stop();
+                highlightTimer.Start();
+            }
+        }
+
+        private void rtbCode_VScroll(object sender, EventArgs e)
+        {
+            ScheduleVisibleHighlight();
+        }
+
+        private void rtbCode_HScroll(object sender, EventArgs e)
+        {
+            ScheduleVisibleHighlight();
+        }
+
+        private void rtbCode_MouseWheel(object sender, MouseEventArgs e)
+        {
+            ScheduleVisibleHighlight();
+        }
+
         private void rtbCode_SelectionChanged(object sender, EventArgs e)
         {
             if (highlighting)
@@ -216,7 +405,54 @@ namespace SqlDbAid
                 return;
             }
 
-            lblPosition.Text = string.Format("Line {0} Column {1}", rtbCode.GetLineFromCharIndex(rtbCode.SelectionStart) + 1, rtbCode.SelectionStart - rtbCode.GetFirstCharIndexOfCurrentLine() + 1);
+            UpdatePositionStatus();
+        }
+
+        private void UpdatePositionStatus()
+        {
+            string position = string.Format("Line {0} Column {1}",
+                rtbCode.GetLineFromCharIndex(rtbCode.SelectionStart) + 1,
+                rtbCode.SelectionStart - rtbCode.GetFirstCharIndexOfCurrentLine() + 1);
+            lblPosition.Text = syntaxColorsEnabled
+                ? position
+                : position + " | syntax colors off; right-click to highlight";
+        }
+
+        private void syntaxHighlightToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (pendingCode != null || syntaxColorsEnabled)
+            {
+                return;
+            }
+
+            int selectionStart = rtbCode.SelectionStart;
+            highlighting = true;
+            try
+            {
+                sqlHL.Highlight(rtbCode);
+                codeText = rtbCode.Text;
+                syntaxColorsEnabled = true;
+                syntaxHighlightToolStripMenuItem.Enabled = false;
+                syntaxHighlightToolStripMenuItem.Text = "SQL highlighted";
+
+                UpdateSearchMatches();
+                searchMatchesInitialized = true;
+                if (matchColl != null && matchColl.Count > 0)
+                {
+                    SelectNext();
+                }
+                else
+                {
+                    rtbCode.Select(Math.Min(selectionStart, codeText.Length), 0);
+                }
+
+                UpdatePositionStatus();
+                rtbCode.Invalidate();
+            }
+            finally
+            {
+                highlighting = false;
+            }
         }
 
         private void cutToolStripMenuItem_Click(object sender, EventArgs e)
