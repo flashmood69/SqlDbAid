@@ -1095,9 +1095,6 @@ namespace SqlDbAid
                 Cursor = Cursors.WaitCursor;
                 bool loadFailed = false;
 
-                bool serverEnabled = cmbServer.Enabled;
-                bool databaseEnabled = cmbDatabase.Enabled;
-                bool authEnabled = cmbAuthMode.Enabled;
                 cmbServer.Enabled = false;
                 cmbDatabase.Enabled = false;
                 cmbAuthMode.Enabled = false;
@@ -1129,9 +1126,9 @@ namespace SqlDbAid
                     if (!mIsClosing && !IsDisposed && loadVersion == mObjectTypeLoadVersion)
                     {
                         Cursor = Cursors.Default;
-                        cmbServer.Enabled = serverEnabled;
-                        cmbDatabase.Enabled = databaseEnabled;
-                        cmbAuthMode.Enabled = authEnabled;
+                        cmbServer.Enabled = true;
+                        cmbDatabase.Enabled = true;
+                        cmbAuthMode.Enabled = true;
 
                         if (loadFailed)
                         {
@@ -1142,6 +1139,14 @@ namespace SqlDbAid
                     }
                 }
             }
+            else
+            {
+                Cursor = Cursors.Default;
+                cmbServer.Enabled = true;
+                cmbDatabase.Enabled = true;
+                cmbAuthMode.Enabled = true;
+            }
+
             UpdateControlStatus();
         }
 

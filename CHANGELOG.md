@@ -1,5 +1,9 @@
 # SqlDbAid Changelog
 
+## [2.6.9.0]
+- Added automatic SQL syntax highlighting to the query editor.
+- Fixed main window controls not being re-enabled after object-type loading or when no database is selected.
+
 ## [2.6.8.0]
 - Offline Compare can ignore SQL Server-generated constraint names.
 - Prevented object-key collisions during offline comparison.

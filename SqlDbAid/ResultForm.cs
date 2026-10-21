@@ -11,6 +11,8 @@ namespace SqlDbAid
 {
     public partial class ResultForm : Form
     {
+        private const int MAX_AUTOMATIC_SYNTAX_LENGTH = 100000;
+
         int mCurrentRow = -1;
 
         bool mExporting = false;
@@ -38,6 +40,9 @@ namespace SqlDbAid
 
         DataExporter dataExporter;
         ToolStripMenuItem exportResultsToolStripMenuItem;
+        private readonly SqlHighlighter sqlHighlighter = new SqlHighlighter();
+        private Timer syntaxHighlightTimer;
+        private bool mApplyingSyntaxHighlight;
 
         public string AppendTitle
         {
@@ -411,6 +416,10 @@ namespace SqlDbAid
         public ResultForm()
         {
             InitializeComponent();
+            txtQuery.TextChanged += txtQuery_TextChanged;
+            syntaxHighlightTimer = new Timer(components);
+            syntaxHighlightTimer.Interval = 300;
+            syntaxHighlightTimer.Tick += syntaxHighlightTimer_Tick;
         }
 
         private void ResultForm_Load(object sender, EventArgs e)
@@ -689,10 +698,45 @@ namespace SqlDbAid
 
         private void txtQuery_TextChanged(object sender, EventArgs e)
         {
+            if (mApplyingSyntaxHighlight)
+            {
+                return;
+            }
+
             if (!mModified)
             {
                 mModified = true;
                 SetTitle();
+            }
+
+            syntaxHighlightTimer.Stop();
+            if (mShowQuery && txtQuery.TextLength <= MAX_AUTOMATIC_SYNTAX_LENGTH)
+            {
+                syntaxHighlightTimer.Start();
+            }
+        }
+
+        private void syntaxHighlightTimer_Tick(object sender, EventArgs e)
+        {
+            syntaxHighlightTimer.Stop();
+            if (!mShowQuery || IsDisposed || txtQuery.TextLength > MAX_AUTOMATIC_SYNTAX_LENGTH)
+            {
+                return;
+            }
+
+            int selectionStart = txtQuery.SelectionStart;
+            int selectionLength = txtQuery.SelectionLength;
+            mApplyingSyntaxHighlight = true;
+            try
+            {
+                sqlHighlighter.Highlight(txtQuery);
+                txtQuery.Select(
+                    Math.Min(selectionStart, txtQuery.TextLength),
+                    Math.Min(selectionLength, txtQuery.TextLength - Math.Min(selectionStart, txtQuery.TextLength)));
+            }
+            finally
+            {
+                mApplyingSyntaxHighlight = false;
             }
         }
 
