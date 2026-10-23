@@ -19,12 +19,11 @@ namespace SqlDbAid
         private SqlHighlighter sqlHL = new SqlHighlighter();
         private Timer highlightTimer;
 
+        private Regex searchRegex;
         private MatchCollection matchColl;
         private int currentMatch = -1;
 
         private bool highlighting = true;
-        private bool searchHighlightApplied;
-        private bool formShown;
         private bool searchMatchesInitialized;
         private bool syntaxColorsEnabled = true;
 
@@ -127,21 +126,15 @@ namespace SqlDbAid
             highlighting = true;
             try
             {
-                if (searchHighlightApplied)
-                {
-                    int selectionStart = rtbCode.SelectionStart;
-                    int selectionLength = rtbCode.SelectionLength;
-                    rtbCode.SelectAll();
-                    rtbCode.SelectionBackColor = rtbCode.BackColor;
-                    rtbCode.Select(selectionStart, selectionLength);
-                    searchHighlightApplied = false;
-                }
-
+                codeText = rtbCode.Text;
                 UpdateSearchMatches();
                 searchMatchesInitialized = true;
-                if (formShown && codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
+
+                if (syntaxColorsEnabled)
                 {
-                    ApplyVisibleSearchHighlights();
+                    sqlHL.Highlight(rtbCode, searchRegex);
+                    codeText = rtbCode.Text;
+                    UpdateSearchMatches();
                 }
 
                 rtbCode.Invalidate();
@@ -158,9 +151,6 @@ namespace SqlDbAid
             highlightTimer = new Timer(components);
             highlightTimer.Interval = 15;
             highlightTimer.Tick += highlightTimer_Tick;
-            rtbCode.VScroll += rtbCode_VScroll;
-            rtbCode.HScroll += rtbCode_HScroll;
-            rtbCode.MouseWheel += rtbCode_MouseWheel;
             Shown += CodeForm_Shown;
             syntaxHighlightToolStripMenuItem.Visible = false;
             highlighting = false;
@@ -248,8 +238,7 @@ namespace SqlDbAid
 
         private void CodeForm_Shown(object sender, EventArgs e)
         {
-            formShown = true;
-            ScheduleVisibleHighlight();
+            highlightTimer.Start();
         }
 
         private void highlightTimer_Tick(object sender, EventArgs e)
@@ -276,10 +265,12 @@ namespace SqlDbAid
 
                 if (!searchMatchesInitialized)
                 {
+                    UpdateSearchMatches();
                     if (codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
                     {
-                        sqlHL.Highlight(rtbCode);
+                        sqlHL.Highlight(rtbCode, searchRegex);
                         codeText = rtbCode.Text;
+                        UpdateSearchMatches();
                     }
                     else
                     {
@@ -287,15 +278,9 @@ namespace SqlDbAid
                         lblPosition.Text = "Syntax colors skipped; right-click to highlight";
                     }
 
-                    UpdateSearchMatches();
                     searchMatchesInitialized = true;
                     SelectNext();
                     UpdatePositionStatus();
-                }
-
-                if (codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
-                {
-                    ApplyVisibleSearchHighlights();
                 }
             }
             finally
@@ -327,9 +312,9 @@ namespace SqlDbAid
 
         private void UpdateSearchMatches()
         {
+            searchRegex = null;
             matchColl = null;
             currentMatch = -1;
-            searchHighlightApplied = false;
 
             if (searchText.Length == 0)
             {
@@ -337,65 +322,8 @@ namespace SqlDbAid
             }
 
             string search = useRegex ? searchText : Regex.Escape(searchText);
-            Regex regex = new Regex(search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-            matchColl = regex.Matches(codeText);
-            searchHighlightApplied = matchColl.Count > 0 &&
-                codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH;
-        }
-
-        private void ApplyVisibleSearchHighlights()
-        {
-            if (matchColl == null || matchColl.Count == 0)
-            {
-                return;
-            }
-
-            int visibleStart = Math.Max(0, rtbCode.GetCharIndexFromPosition(new Point(1, 1)));
-            int visibleEnd = rtbCode.GetCharIndexFromPosition(
-                new Point(Math.Max(1, rtbCode.ClientSize.Width - 2), Math.Max(1, rtbCode.ClientSize.Height - 2))) + 1;
-            int selectionStart = rtbCode.SelectionStart;
-            int selectionLength = rtbCode.SelectionLength;
-
-            foreach (Match match in matchColl)
-            {
-                if (match.Index >= visibleEnd)
-                {
-                    break;
-                }
-                if (match.Length > 0 && match.Index + match.Length > visibleStart)
-                {
-                    int start = Math.Max(match.Index, visibleStart);
-                    int end = Math.Min(match.Index + match.Length, visibleEnd);
-                    rtbCode.Select(start, end - start);
-                    rtbCode.SelectionBackColor = Color.Yellow;
-                }
-            }
-
-            rtbCode.Select(selectionStart, selectionLength);
-        }
-
-        private void ScheduleVisibleHighlight()
-        {
-            if (formShown && !highlighting)
-            {
-                highlightTimer.Stop();
-                highlightTimer.Start();
-            }
-        }
-
-        private void rtbCode_VScroll(object sender, EventArgs e)
-        {
-            ScheduleVisibleHighlight();
-        }
-
-        private void rtbCode_HScroll(object sender, EventArgs e)
-        {
-            ScheduleVisibleHighlight();
-        }
-
-        private void rtbCode_MouseWheel(object sender, MouseEventArgs e)
-        {
-            ScheduleVisibleHighlight();
+            searchRegex = new Regex(search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+            matchColl = searchRegex.Matches(codeText);
         }
 
         private void rtbCode_SelectionChanged(object sender, EventArgs e)
@@ -429,7 +357,9 @@ namespace SqlDbAid
             highlighting = true;
             try
             {
-                sqlHL.Highlight(rtbCode);
+                codeText = rtbCode.Text;
+                UpdateSearchMatches();
+                sqlHL.Highlight(rtbCode, searchRegex);
                 codeText = rtbCode.Text;
                 syntaxColorsEnabled = true;
                 syntaxHighlightToolStripMenuItem.Enabled = false;

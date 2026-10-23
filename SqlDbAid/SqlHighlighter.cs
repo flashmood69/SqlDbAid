@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace SqlDbAid
@@ -17,6 +18,7 @@ namespace SqlDbAid
         private static readonly Color COL_COMMENT = Color.Green;
         private static readonly Color COL_STRING = Color.Red;
         private static readonly Color COL_NORMAL = Color.Black;
+        private static readonly Color COL_SEARCH = Color.Yellow;
 
         static SqlHighlighter()
         {
@@ -719,13 +721,15 @@ namespace SqlDbAid
             };
         }
 
-        public void Highlight(RichTextBox rtbCode)
+        public void Highlight(RichTextBox rtbCode, Regex searchRegex = null)
         {
             string text = rtbCode.Text;
+            MatchCollection searchMatches = searchRegex == null ? null : searchRegex.Matches(text);
             StringBuilder rtf = CreateRtfHeader(rtbCode, text.Length + 256);
 
             int position = 0;
             int plainTextStart = 0;
+            int searchMatchIndex = 0;
             while (position < text.Length)
             {
                 int tokenStart = position;
@@ -819,15 +823,15 @@ namespace SqlDbAid
 
                 if (colorIndex != 0)
                 {
-                    AppendRtfText(rtf, text, plainTextStart, tokenStart - plainTextStart);
+                    AppendRtfText(rtf, text, plainTextStart, tokenStart - plainTextStart, searchMatches, ref searchMatchIndex);
                     rtf.Append("\\cf").Append(colorIndex).Append(' ');
-                    AppendRtfText(rtf, text, tokenStart, position - tokenStart);
+                    AppendRtfText(rtf, text, tokenStart, position - tokenStart, searchMatches, ref searchMatchIndex);
                     rtf.Append("\\cf1 ");
                     plainTextStart = position;
                 }
             }
 
-            AppendRtfText(rtf, text, plainTextStart, text.Length - plainTextStart);
+            AppendRtfText(rtf, text, plainTextStart, text.Length - plainTextStart, searchMatches, ref searchMatchIndex);
             rtf.Append('}');
 
             rtbCode.Rtf = rtf.ToString();
@@ -846,7 +850,8 @@ namespace SqlDbAid
                 COL_KEYWORD,
                 COL_OPERATOR,
                 COL_TYPE,
-                COL_VARFUN
+                COL_VARFUN,
+                COL_SEARCH
             };
             StringBuilder rtf = new StringBuilder(capacity);
             rtf.Append(@"{\rtf1\ansi\deff0\uc1{\fonttbl{\f0\fcharset0 ");
@@ -918,6 +923,55 @@ namespace SqlDbAid
                             rtf.Append(value);
                         }
                         break;
+                }
+            }
+        }
+
+        private static void AppendRtfText(
+            StringBuilder rtf,
+            string text,
+            int start,
+            int length,
+            MatchCollection searchMatches,
+            ref int searchMatchIndex)
+        {
+            if (searchMatches == null || searchMatches.Count == 0)
+            {
+                AppendRtfText(rtf, text, start, length);
+                return;
+            }
+
+            int position = start;
+            int end = start + length;
+            while (position < end)
+            {
+                while (searchMatchIndex < searchMatches.Count &&
+                    ((Match)searchMatches[searchMatchIndex]).Index + ((Match)searchMatches[searchMatchIndex]).Length <= position)
+                {
+                    searchMatchIndex++;
+                }
+
+                if (searchMatchIndex >= searchMatches.Count ||
+                    ((Match)searchMatches[searchMatchIndex]).Index >= end)
+                {
+                    AppendRtfText(rtf, text, position, end - position);
+                    break;
+                }
+
+                Match match = (Match)searchMatches[searchMatchIndex];
+                if (match.Index > position)
+                {
+                    int plainEnd = Math.Min(match.Index, end);
+                    AppendRtfText(rtf, text, position, plainEnd - position);
+                    position = plainEnd;
+                }
+                else
+                {
+                    int matchEnd = Math.Min(match.Index + match.Length, end);
+                    rtf.Append(@"\highlight9 ");
+                    AppendRtfText(rtf, text, position, matchEnd - position);
+                    rtf.Append(@"\highlight0 ");
+                    position = matchEnd;
                 }
             }
         }

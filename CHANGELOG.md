@@ -1,5 +1,10 @@
 # SqlDbAid Changelog
 
+## [2.7.0.0]
+- Preserve user settings when upgrading between application versions.
+- Prevent search-result highlighting from disrupting code-view scrolling.
+- Refresh the application icon and logo.
+
 ## [2.6.9.0]
 - Added automatic SQL syntax highlighting to the query editor.
 - Fixed main window controls not being re-enabled after object-type loading or when no database is selected.

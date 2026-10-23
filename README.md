@@ -1,8 +1,6 @@
 # SqlDbAid
 
-<p align="center">
-  <img src="Res/SDALogo.png" alt="SqlDbAid Logo" width="200"/>
-</p>
+![SqlDbAid Logo](Res/SDALogo.png)
 
 SqlDbAid is an intuitive standalone application that enables you to easily script database items and data for SQL Server. It's a powerful tool for database developers and administrators to manage, compare and export SQL Server database objects and data.
 
@@ -11,14 +9,10 @@ SqlDbAid is an intuitive standalone application that enables you to easily scrip
 ### Portable
 
 ### User-Friendly Interface
-<p align="center">
-  <img src="Res/F01-MainForm.png" alt="Main Interface" width="700"/>
-</p>
+![Main Interface](Res/F01-MainForm.png)
 
 ### Intuitive menu system
-<p align="center">
-  <img src="Res/F02-Menu.png" alt="Menu System" width="700"/>
-</p>
+![Menu System](Res/F02-Menu.png)
 
 
 ### Database Object Scripting
@@ -27,18 +21,14 @@ SqlDbAid is an intuitive standalone application that enables you to easily scrip
 - Syntax highlighting for SQL code
 
 ### Database Comparison
-<p align="center">
-  <img src="Res/F03-Compare.png" alt="Database Comparison" width="700"/>
-</p>
+![Database Comparison](Res/F03-Compare.png)
 
 - Compare database objects between different databases
 - Compare the same database objects between different points in time
 
 
 ### Data Export
-<p align="center">
-  <img src="Res/F04-Export.png" alt="Data Export" width="700"/>
-</p>
+![Data Export](Res/F04-Export.png)
 
 - Export data to various formats (Text, Insert Script)
 - Customizable export settings (delimiters, text qualifiers, etc.)
