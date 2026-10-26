@@ -2726,22 +2726,24 @@ ORDER BY cached_MB DESC
             else if (queryId == QueryId.DataSearch)
             {
                 return @"
-SELECT 'DECLARE @search NVARCHAR(100)' cmd, '--' cm, 0 sn, 1 rn
+SELECT 'SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; SET NOCOUNT ON' cmd, '--' cm, 0 sn, 1 rn
 UNION ALL
-SELECT 'SET @search = N''%search this%''' cmd, '--' cm, 0 sn, 2 rn
+SELECT 'DECLARE @start DATETIME = GETDATE(), @finish DATETIME' cmd, '--' cm, 0 sn, 2 rn
 UNION ALL
-SELECT 'DECLARE @FOUND INT' cmd, '--' cm, 0 sn, 3 rn
+SELECT 'DECLARE @tmp_src AS TABLE (tb_name NVARCHAR(300), cl_name NVARCHAR(300))' cmd, '--' cm, 0 sn, 3 rn
 UNION ALL
-SELECT 'SET @FOUND = 0' cmd, '--' cm, 0 sn, 4 rn
+SELECT 'DECLARE @search NVARCHAR(100) = N''%search this%''' cmd, '--' cm, 0 sn, 4 rn
+UNION ALL
+SELECT '' cmd, '--' cm, 0 sn, 5 rn
 UNION ALL
 SELECT
-	'IF EXISTS(SELECT TOP 1 1 FROM ' + QUOTENAME(SCHEMA_NAME(T.schema_id)) + '.' + QUOTENAME(T.name) + ' WITH(NOLOCK) WHERE ' +
+	'INSERT INTO @tmp_src SELECT TOP 1 ''' + REPLACE(QUOTENAME(SCHEMA_NAME(T.schema_id)) + '.' + QUOTENAME(T.name), '''', '''''') + ''',''' + REPLACE(QUOTENAME(C.name), '''', '''''') + ''' FROM ' + QUOTENAME(SCHEMA_NAME(T.schema_id)) + '.' + QUOTENAME(T.name) + ' WHERE ' +
 	CASE
 		WHEN C.collation_name IS NOT NULL THEN QUOTENAME(C.name)
 		WHEN CT.name IN ('image') THEN 'CONVERT(NVARCHAR(MAX), CONVERT(VARBINARY(MAX), ' + QUOTENAME(C.name) + '))'
 		ELSE 'CONVERT(NVARCHAR(MAX), ' + QUOTENAME(C.name) + ')'
 	END +
-	' LIKE @search) BEGIN PRINT ''' + REPLACE(QUOTENAME(SCHEMA_NAME(T.schema_id)) + '.' + QUOTENAME(T.name) + '.' + QUOTENAME(C.name), '''', '''''') + '''; SET @FOUND = @FOUND + 1 END' cmd,
+	' LIKE @search' cmd,
 	'--' cm,
 	1 sn,
 	ROW_NUMBER() OVER (ORDER BY SCHEMA_NAME(T.schema_id), T.name, C.name) rn
@@ -2759,7 +2761,9 @@ WHERE
 	(C.collation_name IS NOT NULL OR CT.name IN ('image','varbinary','binary','xml')) AND
 	C.is_computed = 0
 UNION ALL
-SELECT 'SELECT CONVERT(VARCHAR, @FOUND) + '' columns found'' search_result' cmd, '--' cm, 2 sn, 1 rn
+SELECT 'SET @finish = GETDATE(); PRINT ''Elapsed time: '' + CONVERT(NVARCHAR, DATEDIFF(SECOND, @start, @finish) / 60) + '' minutes, '' + CONVERT(NVARCHAR, DATEDIFF(SECOND, @start, @finish) % 60) + '' seconds''' cmd, '--' cm, 2 sn, 1 rn
+UNION ALL
+SELECT 'SELECT * FROM @tmp_src ORDER BY tb_name, cl_name' cmd, '--' cm, 2 sn, 2 rn
 ORDER BY
 	3, 4
 /*sda*/

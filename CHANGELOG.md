@@ -1,15 +1,21 @@
 # SqlDbAid Changelog
 
-## [2.7.0.0]
+## [v2.7.1.0]
+- Filter database objects by schema and name from the grid context menu.
+- Show active object filters in column headers and reflect row selection in the select-all checkbox.
+- Add Find and Replace to the SQL query editor, including regular-expression search.
+- Add bounded Undo and Redo history to the SQL query editor.
+
+## [v2.7.0.0]
 - Preserve user settings when upgrading between application versions.
 - Prevent search-result highlighting from disrupting code-view scrolling.
 - Refresh the application icon and logo.
 
-## [2.6.9.0]
+## [v2.6.9.0]
 - Added automatic SQL syntax highlighting to the query editor.
 - Fixed main window controls not being re-enabled after object-type loading or when no database is selected.
 
-## [2.6.8.0]
+## [v2.6.8.0]
 - Offline Compare can ignore SQL Server-generated constraint names.
 - Prevented object-key collisions during offline comparison.
 - Database, object-type, and script retrieval now run asynchronously to keep the main window responsive.

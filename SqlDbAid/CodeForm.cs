@@ -322,8 +322,71 @@ namespace SqlDbAid
             }
 
             string search = useRegex ? searchText : Regex.Escape(searchText);
-            searchRegex = new Regex(search, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+            searchRegex = new Regex(
+                search,
+                RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase,
+                TimeSpan.FromMilliseconds(250));
             matchColl = searchRegex.Matches(codeText);
+        }
+
+        private void FindInCode()
+        {
+            string newSearchText = searchText;
+            bool newUseRegex = useRegex;
+            if (InputBox("Find", "Find what:", ref newSearchText, ref newUseRegex) != DialogResult.OK)
+            {
+                return;
+            }
+
+            searchText = newSearchText;
+            useRegex = newUseRegex;
+            try
+            {
+                SyntaxHighlight();
+                if (matchColl == null || matchColl.Count == 0)
+                {
+                    MessageBox.Show(this, "No matches found.", "Find", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                SelectNext();
+            }
+            catch (ArgumentException ex)
+            {
+                MessageBox.Show(this, "The search expression is invalid.\r\n" + ex.Message, "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                MessageBox.Show(this, "The search exceeded the 250 ms limit. Please simplify the expression.", "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.F))
+            {
+                FindInCode();
+                return true;
+            }
+
+            if (keyData == Keys.F3 || keyData == (Keys.Shift | Keys.F3))
+            {
+                if (matchColl != null && matchColl.Count > 0)
+                {
+                    if (keyData == (Keys.Shift | Keys.F3))
+                    {
+                        SelectPrev();
+                    }
+                    else
+                    {
+                        SelectNext();
+                    }
+                }
+
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void rtbCode_SelectionChanged(object sender, EventArgs e)
@@ -463,25 +526,9 @@ namespace SqlDbAid
             rtbCode.SelectionLength = selectionLength;
         }
 
-        private void rtbCode_KeyUp(object sender, KeyEventArgs e)
+        private void findToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (e.Control && e.KeyCode == Keys.F)
-            {
-                if (InputBox("Find", "Find what:", ref searchText, ref useRegex) == DialogResult.OK)
-                {
-                    SyntaxHighlight();
-
-                    SelectNext();
-                }
-            }
-            else if (e.Shift && e.KeyCode == Keys.F3 && matchColl != null && matchColl.Count > 0)
-            {
-                SelectPrev();
-            }
-            else if (e.KeyCode == Keys.F3 && matchColl != null && matchColl.Count > 0)
-            {
-                SelectNext();
-            }
+            FindInCode();
         }
     }
 }

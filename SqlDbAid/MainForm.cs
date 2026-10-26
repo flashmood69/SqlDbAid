@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -11,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 
 namespace SqlDbAid
 {
@@ -18,7 +20,7 @@ namespace SqlDbAid
     {
         #region Fields
 
-        private bool mCheckAll = false;
+        private bool mUpdatingSelection = false;
         private bool mHasXeSessions = false;
         private bool mHasMSDB = false;
         private bool mLoadingDatabases = false;
@@ -28,13 +30,27 @@ namespace SqlDbAid
         private int mCurrentRow = -1;
         private int mQryCount = 1;
         private int mObjectTypeLoadVersion = 0;
+        private int mContextMenuRow = -1;
+        private int mContextMenuColumn = -1;
+        private bool mHasContextMenuMouseTarget;
 
         private string mTitleFormat = "{0}.{1} ({2} - {3})";
         private string mDbName = "";
+        private string mSchemaFilter = string.Empty;
+        private bool mSchemaFilterIsExact;
+        private string mNameFilter = string.Empty;
+        private bool mNameFilterIsExact;
+        private string mFilterColumn;
 
         private BindingSource mDatabaseBinding;
         //private BindingSource mObjTypeBinding;
         private BindingSource mObjCodeBinding;
+        private SelectAllCheckBoxHeaderCell mSelectionHeader;
+        private ToolStripSeparator mFilterMenuSeparator;
+        private ToolStripMenuItem mFilterByValueMenuItem;
+        private ToolStripMenuItem mSetFilterMenuItem;
+        private ToolStripMenuItem mRemoveFilterMenuItem;
+        private ToolStripMenuItem mClearFiltersMenuItem;
 
         #endregion
 
@@ -73,6 +89,85 @@ namespace SqlDbAid
             public DataTable Databases { get; set; }
             public bool HasXeSessions { get; set; }
             public bool HasMsdb { get; set; }
+        }
+
+        private sealed class SelectAllCheckBoxHeaderCell : DataGridViewColumnHeaderCell
+        {
+            public CheckState CheckState { get; set; }
+
+            protected override void Paint(
+                Graphics graphics,
+                Rectangle clipBounds,
+                Rectangle cellBounds,
+                int rowIndex,
+                DataGridViewElementStates dataGridViewElementState,
+                object value,
+                object formattedValue,
+                string errorText,
+                DataGridViewCellStyle cellStyle,
+                DataGridViewAdvancedBorderStyle advancedBorderStyle,
+                DataGridViewPaintParts paintParts)
+            {
+                base.Paint(
+                    graphics,
+                    clipBounds,
+                    cellBounds,
+                    rowIndex,
+                    dataGridViewElementState,
+                    value,
+                    formattedValue,
+                    errorText,
+                    cellStyle,
+                    advancedBorderStyle,
+                    paintParts & ~DataGridViewPaintParts.ContentForeground);
+
+                CheckBoxState visualState;
+                bool useVisualStyles = Application.RenderWithVisualStyles;
+                switch (CheckState)
+                {
+                    case CheckState.Checked:
+                        visualState = CheckBoxState.CheckedNormal;
+                        break;
+                    case CheckState.Indeterminate:
+                        visualState = CheckBoxState.MixedNormal;
+                        break;
+                    default:
+                        visualState = CheckBoxState.UncheckedNormal;
+                        break;
+                }
+
+                Size glyphSize = useVisualStyles
+                    ? CheckBoxRenderer.GetGlyphSize(graphics, visualState)
+                    : new Size(13, 13);
+                Point glyphLocation = new Point(
+                    cellBounds.X + (cellBounds.Width - glyphSize.Width) / 2,
+                    cellBounds.Y + (cellBounds.Height - glyphSize.Height) / 2);
+
+                if (useVisualStyles)
+                {
+                    CheckBoxRenderer.DrawCheckBox(graphics, glyphLocation, visualState);
+                }
+                else
+                {
+                    ButtonState buttonState = CheckState == CheckState.Checked
+                        ? ButtonState.Checked
+                        : ButtonState.Normal;
+                    Rectangle glyphBounds = new Rectangle(glyphLocation, glyphSize);
+                    ControlPaint.DrawCheckBox(graphics, glyphBounds, buttonState);
+                    if (CheckState == CheckState.Indeterminate)
+                    {
+                        Rectangle markBounds = new Rectangle(
+                            glyphBounds.X + 4,
+                            glyphBounds.Y + glyphBounds.Height / 2 - 1,
+                            glyphBounds.Width - 8,
+                            3);
+                        using (Brush brush = new SolidBrush(SystemColors.ControlText))
+                        {
+                            graphics.FillRectangle(brush, markBounds);
+                        }
+                    }
+                }
+            }
         }
 
         #endregion
@@ -363,7 +458,8 @@ namespace SqlDbAid
 
                 if (!mIsClosing && !IsDisposed && databaseName == mDbName)
                 {
-                    mObjCodeBinding.DataSource = resultTable;
+                    mObjCodeBinding.DataSource = resultTable.DefaultView;
+                    ApplyObjectColumnFilters();
                 }
             }
             catch (RegexMatchTimeoutException)
@@ -789,17 +885,433 @@ namespace SqlDbAid
                 exportSelectedObjectsToolStripMenuItem.Enabled = true;
                 exportToolStripMenuItem.Enabled = true;
                 btnExport.Enabled = true;
-                mCheckAll = true;
             }
             else
             {
                 exportSelectedObjectsToolStripMenuItem.Enabled = false;
                 exportToolStripMenuItem.Enabled = false;
                 btnExport.Enabled = false;
-                mCheckAll = false;
             }
 
             lblCount.Text = dgvCode.RowCount.ToString();
+            UpdateSelectAllHeader();
+        }
+
+        private void UpdateSelectAllHeader()
+        {
+            if (dgvCode.Columns.Count <= selected.Index)
+            {
+                return;
+            }
+
+            SelectAllCheckBoxHeaderCell header =
+                dgvCode.Columns[selected.Index].HeaderCell as SelectAllCheckBoxHeaderCell;
+            if (header == null)
+            {
+                header = new SelectAllCheckBoxHeaderCell();
+                dgvCode.Columns[selected.Index].HeaderCell = header;
+            }
+            mSelectionHeader = header;
+
+            int rowCount = 0;
+            int selectedCount = 0;
+            foreach (DataGridViewRow row in dgvCode.Rows)
+            {
+                if (row.IsNewRow)
+                {
+                    continue;
+                }
+
+                rowCount++;
+                object value = row.Cells[selected.Index].Value;
+                bool isSelected = value is bool
+                    ? (bool)value
+                    : value != null && string.Equals(
+                        Convert.ToString(value),
+                        bool.TrueString,
+                        StringComparison.OrdinalIgnoreCase);
+                if (isSelected)
+                {
+                    selectedCount++;
+                }
+            }
+
+            if (selectedCount == 0)
+            {
+                header.CheckState = CheckState.Unchecked;
+            }
+            else if (selectedCount == rowCount)
+            {
+                header.CheckState = CheckState.Checked;
+            }
+            else
+            {
+                header.CheckState = CheckState.Indeterminate;
+            }
+
+            header.ToolTipText = selectedCount == 0
+                ? "Select all visible objects."
+                : selectedCount == rowCount
+                    ? "Clear selection for all visible objects."
+                    : string.Format(
+                        "{0} of {1} visible objects selected.",
+                        selectedCount,
+                        rowCount);
+            dgvCode.InvalidateCell(header);
+        }
+
+        private void dgvCode_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            UpdateSelectAllHeader();
+        }
+
+        private void dgvCode_RowsRemoved(object sender, DataGridViewRowsRemovedEventArgs e)
+        {
+            UpdateSelectAllHeader();
+        }
+
+        private void dgvCode_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (!mUpdatingSelection && e.ColumnIndex == selected.Index)
+            {
+                UpdateSelectAllHeader();
+            }
+        }
+
+        private void dgvCode_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (dgvCode.IsCurrentCellDirty &&
+                dgvCode.CurrentCell != null &&
+                dgvCode.CurrentCell.ColumnIndex == selected.Index)
+            {
+                dgvCode.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+        }
+
+        private static string EscapeDataViewLikePattern(string value)
+        {
+            StringBuilder escaped = new StringBuilder(value.Length);
+            foreach (char character in value)
+            {
+                switch (character)
+                {
+                    case '\'':
+                        escaped.Append("''");
+                        break;
+                    case '[':
+                        escaped.Append("[[]");
+                        break;
+                    case '%':
+                        escaped.Append("[%]");
+                        break;
+                    case '*':
+                        escaped.Append("[*]");
+                        break;
+                    default:
+                        escaped.Append(character);
+                        break;
+                }
+            }
+
+            return escaped.ToString();
+        }
+
+        private static string CreateObjectFilterExpression(string columnName, string filter, bool exactMatch)
+        {
+            if (exactMatch)
+            {
+                return string.Format("[{0}] = '{1}'", columnName, filter.Replace("'", "''"));
+            }
+
+            return string.Format(
+                "[{0}] LIKE '%{1}%'",
+                columnName,
+                EscapeDataViewLikePattern(filter));
+        }
+
+        private string GetObjectFilter(string columnName)
+        {
+            return columnName == obj_schema.Name ? mSchemaFilter : mNameFilter;
+        }
+
+        private void SetObjectFilter(string columnName, string filter, bool exactMatch)
+        {
+            if (columnName == obj_schema.Name)
+            {
+                mSchemaFilter = filter ?? string.Empty;
+                mSchemaFilterIsExact = exactMatch && mSchemaFilter.Length > 0;
+            }
+            else if (columnName == obj_name.Name)
+            {
+                mNameFilter = filter ?? string.Empty;
+                mNameFilterIsExact = exactMatch && mNameFilter.Length > 0;
+            }
+            else
+            {
+                return;
+            }
+
+            ApplyObjectColumnFilters();
+            ConfigureObjectFilterMenu(
+                columnName == obj_schema.Name ? obj_schema.Index : obj_name.Index,
+                mCurrentRow);
+        }
+
+        private void ApplyObjectColumnFilters()
+        {
+            if (mObjCodeBinding == null)
+            {
+                UpdateObjectFilterIndicators();
+                return;
+            }
+
+            DataView view = mObjCodeBinding.DataSource as DataView;
+            if (view == null)
+            {
+                UpdateObjectFilterIndicators();
+                return;
+            }
+
+            List<string> filters = new List<string>();
+            if (mSchemaFilter.Length > 0)
+            {
+                filters.Add(CreateObjectFilterExpression(
+                    obj_schema.Name,
+                    mSchemaFilter,
+                    mSchemaFilterIsExact));
+            }
+            if (mNameFilter.Length > 0)
+            {
+                filters.Add(CreateObjectFilterExpression(
+                    obj_name.Name,
+                    mNameFilter,
+                    mNameFilterIsExact));
+            }
+
+            view.RowFilter = string.Join(" AND ", filters);
+            UpdateObjectFilterIndicators();
+            UpdateControlStatus();
+        }
+
+        private void UpdateObjectFilterIndicators()
+        {
+            bool schemaFiltered = !string.IsNullOrEmpty(mSchemaFilter);
+            bool nameFiltered = !string.IsNullOrEmpty(mNameFilter);
+            DataGridViewColumn schemaColumn = dgvCode.Columns[obj_schema.Name];
+            DataGridViewColumn nameColumn = dgvCode.Columns[obj_name.Name];
+
+            schemaColumn.HeaderText = schemaFiltered ? "Schema*" : "Schema";
+            nameColumn.HeaderText = nameFiltered ? "Name*" : "Name";
+            schemaColumn.HeaderCell.ToolTipText = schemaFiltered
+                ? string.Format(
+                    "Schema filter active: {0} '{1}'. Right-click to change or remove it.",
+                    mSchemaFilterIsExact ? "exact match" : "contains",
+                    mSchemaFilter)
+                : "Right-click to filter schemas.";
+            nameColumn.HeaderCell.ToolTipText = nameFiltered
+                ? string.Format(
+                    "Name filter active: {0} '{1}'. Right-click to change or remove it.",
+                    mNameFilterIsExact ? "exact match" : "contains",
+                    mNameFilter)
+                : "Right-click to filter object names.";
+
+            dgvCode.ShowCellToolTips = true;
+            dgvCode.InvalidateColumn(schemaColumn.Index);
+            dgvCode.InvalidateColumn(nameColumn.Index);
+        }
+
+        private bool PromptForObjectFilter(string columnName, string initialValue, out string filter)
+        {
+            string displayName = columnName == obj_schema.Name ? "Schema" : "Name";
+            using (Form dialog = new Form())
+            using (Label prompt = new Label())
+            using (TextBox filterTextBox = new TextBox())
+            using (Button applyButton = new Button())
+            using (Button cancelButton = new Button())
+            {
+                dialog.Text = "Filter " + displayName;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(360, 96);
+
+                prompt.AutoSize = true;
+                prompt.Location = new Point(12, 12);
+                prompt.Text = "Show values containing:";
+
+                filterTextBox.Location = new Point(12, 32);
+                filterTextBox.Size = new Size(336, 20);
+                filterTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                filterTextBox.Text = initialValue ?? string.Empty;
+
+                applyButton.Location = new Point(192, 64);
+                applyButton.Size = new Size(75, 23);
+                applyButton.Text = "Apply";
+                applyButton.DialogResult = DialogResult.OK;
+                applyButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+                cancelButton.Location = new Point(273, 64);
+                cancelButton.Size = new Size(75, 23);
+                cancelButton.Text = "Cancel";
+                cancelButton.DialogResult = DialogResult.Cancel;
+                cancelButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+                dialog.Controls.Add(prompt);
+                dialog.Controls.Add(filterTextBox);
+                dialog.Controls.Add(applyButton);
+                dialog.Controls.Add(cancelButton);
+                dialog.AcceptButton = applyButton;
+                dialog.CancelButton = cancelButton;
+                dialog.Shown += delegate
+                {
+                    filterTextBox.Focus();
+                    filterTextBox.SelectAll();
+                };
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    filter = filterTextBox.Text;
+                    return true;
+                }
+            }
+
+            filter = null;
+            return false;
+        }
+
+        private void InitializeObjectFilterMenu()
+        {
+            mFilterMenuSeparator = new ToolStripSeparator { Visible = false };
+            mFilterByValueMenuItem = new ToolStripMenuItem("Filter by this value");
+            mSetFilterMenuItem = new ToolStripMenuItem("Enter or change filter...");
+            mRemoveFilterMenuItem = new ToolStripMenuItem("Remove filter");
+            mClearFiltersMenuItem = new ToolStripMenuItem("Clear all filters");
+
+            mFilterByValueMenuItem.Click += FilterByValueMenuItem_Click;
+            mSetFilterMenuItem.Click += SetFilterMenuItem_Click;
+            mRemoveFilterMenuItem.Click += RemoveFilterMenuItem_Click;
+            mClearFiltersMenuItem.Click += ClearFiltersMenuItem_Click;
+
+            datagridMenu.Items.AddRange(new ToolStripItem[]
+            {
+                mFilterMenuSeparator,
+                mFilterByValueMenuItem,
+                mSetFilterMenuItem,
+                mRemoveFilterMenuItem,
+                mClearFiltersMenuItem
+            });
+        }
+
+        private ContextMenuStrip CreateObjectHeaderFilterMenu(string columnName)
+        {
+            string displayName = columnName == obj_schema.Name ? "Schema" : "Name";
+            ContextMenuStrip menu = new ContextMenuStrip();
+            ToolStripMenuItem setFilterMenuItem = new ToolStripMenuItem("Enter or change filter...");
+            ToolStripMenuItem removeFilterMenuItem = new ToolStripMenuItem("Remove " + displayName + " filter");
+            ToolStripMenuItem clearFiltersMenuItem = new ToolStripMenuItem("Clear all filters");
+
+            setFilterMenuItem.Click += SetFilterMenuItem_Click;
+            removeFilterMenuItem.Click += RemoveFilterMenuItem_Click;
+            clearFiltersMenuItem.Click += ClearFiltersMenuItem_Click;
+
+            menu.Items.AddRange(new ToolStripItem[]
+            {
+                setFilterMenuItem,
+                removeFilterMenuItem,
+                new ToolStripSeparator(),
+                clearFiltersMenuItem
+            });
+            menu.Opening += delegate
+            {
+                mFilterColumn = columnName;
+                mCurrentRow = -1;
+                removeFilterMenuItem.Enabled = true;
+                clearFiltersMenuItem.Enabled = true;
+            };
+
+            return menu;
+        }
+
+        private void ConfigureObjectFilterMenu(int columnIndex, int rowIndex)
+        {
+            if (columnIndex == obj_schema.Index)
+            {
+                mFilterColumn = obj_schema.Name;
+            }
+            else if (columnIndex == obj_name.Index)
+            {
+                mFilterColumn = obj_name.Name;
+            }
+            else
+            {
+                mFilterColumn = null;
+            }
+
+            bool canFilter = mFilterColumn != null;
+            mFilterMenuSeparator.Visible = canFilter;
+            mFilterByValueMenuItem.Visible = canFilter && rowIndex >= 0;
+            mSetFilterMenuItem.Visible = canFilter;
+            mRemoveFilterMenuItem.Visible = canFilter;
+            mClearFiltersMenuItem.Visible = canFilter;
+
+            if (canFilter)
+            {
+                string displayName = mFilterColumn == obj_schema.Name ? "Schema" : "Name";
+                mRemoveFilterMenuItem.Text = "Remove " + displayName + " filter";
+                mRemoveFilterMenuItem.Enabled = true;
+                mClearFiltersMenuItem.Enabled = true;
+            }
+        }
+
+        private void FilterByValueMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mFilterColumn == null || mCurrentRow < 0 || mCurrentRow >= dgvCode.Rows.Count)
+            {
+                return;
+            }
+
+            object value = dgvCode.Rows[mCurrentRow].Cells[mFilterColumn].Value;
+            SetObjectFilter(mFilterColumn, value == null ? string.Empty : value.ToString(), true);
+        }
+
+        private void SetFilterMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mFilterColumn == null)
+            {
+                return;
+            }
+
+            string initialValue = GetObjectFilter(mFilterColumn);
+            if (initialValue.Length == 0 && mCurrentRow >= 0 && mCurrentRow < dgvCode.Rows.Count)
+            {
+                object value = dgvCode.Rows[mCurrentRow].Cells[mFilterColumn].Value;
+                initialValue = value == null ? string.Empty : value.ToString();
+            }
+
+            string filter;
+            if (PromptForObjectFilter(mFilterColumn, initialValue, out filter))
+            {
+                SetObjectFilter(mFilterColumn, filter, false);
+            }
+        }
+
+        private void RemoveFilterMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mFilterColumn != null)
+            {
+                SetObjectFilter(mFilterColumn, string.Empty, false);
+            }
+        }
+
+        private void ClearFiltersMenuItem_Click(object sender, EventArgs e)
+        {
+            mSchemaFilter = string.Empty;
+            mSchemaFilterIsExact = false;
+            mNameFilter = string.Empty;
+            mNameFilterIsExact = false;
+            ApplyObjectColumnFilters();
         }
 
         private void ViewCode(string formTitle, string formText, string searchText)
@@ -820,7 +1332,8 @@ namespace SqlDbAid
             table.Columns.Add("modify_date");
             table.Columns.Add("code");
             table.Columns.Add("ord_id");
-            mObjCodeBinding.DataSource = table;
+            mObjCodeBinding.DataSource = table.DefaultView;
+            ApplyObjectColumnFilters();
         }
 
         private void TableStatistics(string objectName, string objectSchema)
@@ -957,6 +1470,25 @@ namespace SqlDbAid
         public MainForm()
         {
             InitializeComponent();
+
+            selected.HeaderText = string.Empty;
+            mSelectionHeader = new SelectAllCheckBoxHeaderCell();
+            mSelectionHeader.Value = string.Empty;
+            mSelectionHeader.ToolTipText = "Select or clear all visible objects.";
+            selected.HeaderCell = mSelectionHeader;
+            InitializeObjectFilterMenu();
+            ContextMenuStrip schemaFilterMenu = CreateObjectHeaderFilterMenu(obj_schema.Name);
+            ContextMenuStrip nameFilterMenu = CreateObjectHeaderFilterMenu(obj_name.Name);
+            components.Add(schemaFilterMenu);
+            components.Add(nameFilterMenu);
+            obj_schema.HeaderCell.ContextMenuStrip = schemaFilterMenu;
+            obj_name.HeaderCell.ContextMenuStrip = nameFilterMenu;
+            datagridMenu.Opening += datagridMenu_Opening;
+            dgvCode.MouseUp += dgvCode_MouseUp;
+            dgvCode.CellValueChanged += dgvCode_CellValueChanged;
+            dgvCode.CurrentCellDirtyStateChanged += dgvCode_CurrentCellDirtyStateChanged;
+            dgvCode.DataBindingComplete += dgvCode_DataBindingComplete;
+            dgvCode.RowsRemoved += dgvCode_RowsRemoved;
         }
 
         #endregion
@@ -1197,15 +1729,30 @@ namespace SqlDbAid
 
         private void dgvCode_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (e.ColumnIndex == 0 && dgvCode.RowCount > 0)
+            if (e.Button == MouseButtons.Right)
             {
-                mCheckAll = !mCheckAll;
+                return;
+            }
 
-                for (int i = 0; i < dgvCode.RowCount; i++)
+            if (e.ColumnIndex == selected.Index && dgvCode.RowCount > 0)
+            {
+                UpdateSelectAllHeader();
+                bool selectAll = mSelectionHeader.CheckState != CheckState.Checked;
+                mUpdatingSelection = true;
+                try
                 {
-                    dgvCode["selected", i].Value = mCheckAll;
+                    for (int i = 0; i < dgvCode.RowCount; i++)
+                    {
+                        dgvCode["selected", i].Value = selectAll;
+                    }
+                    dgvCode.EndEdit();
                 }
-                dgvCode.EndEdit();
+                finally
+                {
+                    mUpdatingSelection = false;
+                }
+
+                UpdateSelectAllHeader();
             }
         }
 
@@ -1744,55 +2291,77 @@ namespace SqlDbAid
         private void dgvCode_MouseDown(object sender, MouseEventArgs e)
         {
             DataGridView.HitTestInfo hti = dgvCode.HitTest(e.X, e.Y);
-
             mCurrentRow = hti.RowIndex;
+        }
+
+        private void dgvCode_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
+            {
+                return;
+            }
+
+            DataGridView.HitTestInfo hti = dgvCode.HitTest(e.X, e.Y);
+            if (hti.RowIndex < 0)
+            {
+                return;
+            }
+
+            bool filterColumn = hti.ColumnIndex == obj_schema.Index ||
+                hti.ColumnIndex == obj_name.Index;
+
+            mContextMenuRow = hti.RowIndex;
+            mContextMenuColumn = hti.ColumnIndex;
+            mHasContextMenuMouseTarget = true;
+            datagridMenu.Show(dgvCode, e.Location);
+        }
+
+        private void datagridMenu_Opening(object sender, CancelEventArgs e)
+        {
+            int rowIndex;
+            int columnIndex;
+            if (mHasContextMenuMouseTarget)
+            {
+                rowIndex = mContextMenuRow;
+                columnIndex = mContextMenuColumn;
+                mHasContextMenuMouseTarget = false;
+            }
+            else
+            {
+                Point location = dgvCode.PointToClient(Cursor.Position);
+                DataGridView.HitTestInfo hti = dgvCode.HitTest(location.X, location.Y);
+                rowIndex = hti.RowIndex;
+                columnIndex = hti.ColumnIndex;
+            }
+
+            mCurrentRow = rowIndex;
+            ConfigureObjectFilterMenu(columnIndex, rowIndex);
 
             if (mCurrentRow >= 0)
             {
                 string obj_type = dgvCode.Rows[mCurrentRow].Cells["obj_type"].Value.ToString();
-
-                if (obj_type == "Table")
-                {
-                    scriptSelectToolStripMenuItem.Visible = true;
-                    scriptInsertToolStripMenuItem.Visible = true;
-                    scriptUpdateToolStripMenuItem.Visible = true;
-                    countDistinctToolStripMenuItem.Visible = true;
-
-                    exportDataToolStripMenuItem.Visible = true;
-                    viewDataToolStripMenuItem.Visible = true;
-
-                    missingIndexesToolStripMenuItem1.Visible = true;
-                    indexStatisticsToolStripMenuItem.Visible = true;
-                }
-                else if (obj_type == "View")
-                {
-                    scriptSelectToolStripMenuItem.Visible = true;
-                    scriptInsertToolStripMenuItem.Visible = false;
-                    scriptUpdateToolStripMenuItem.Visible = false;
-                    countDistinctToolStripMenuItem.Visible = false;
-
-                    exportDataToolStripMenuItem.Visible = true;
-                    viewDataToolStripMenuItem.Visible = true;
-
-                    missingIndexesToolStripMenuItem1.Visible = true;
-                    indexStatisticsToolStripMenuItem.Visible = false;
-                }
-                else
-                {
-                    scriptSelectToolStripMenuItem.Visible = false;
-                    scriptInsertToolStripMenuItem.Visible = false;
-                    scriptUpdateToolStripMenuItem.Visible = false;
-                    countDistinctToolStripMenuItem.Visible = false;
-
-                    exportDataToolStripMenuItem.Visible = false;
-                    viewDataToolStripMenuItem.Visible = false;
-
-                    missingIndexesToolStripMenuItem1.Visible = false;
-                    indexStatisticsToolStripMenuItem.Visible = false;
-                }
-
-                dgvCode.ContextMenuStrip = datagridMenu;
+                ConfigureObjectScriptMenu(obj_type);
             }
+            else
+            {
+                ConfigureObjectScriptMenu(string.Empty);
+                e.Cancel = mFilterColumn == null;
+            }
+        }
+
+        private void ConfigureObjectScriptMenu(string objectType)
+        {
+            bool isTable = objectType == "Table";
+            bool isView = objectType == "View";
+            viewCodeToolStripMenuItem.Visible = !string.IsNullOrEmpty(objectType);
+            scriptSelectToolStripMenuItem.Visible = isTable || isView;
+            scriptInsertToolStripMenuItem.Visible = isTable;
+            scriptUpdateToolStripMenuItem.Visible = isTable;
+            countDistinctToolStripMenuItem.Visible = isTable;
+            exportDataToolStripMenuItem.Visible = isTable || isView;
+            viewDataToolStripMenuItem.Visible = isTable || isView;
+            missingIndexesToolStripMenuItem1.Visible = isTable || isView;
+            indexStatisticsToolStripMenuItem.Visible = isTable;
         }
 
         private void viewCodeToolStripMenuItem_Click(object sender, EventArgs e)

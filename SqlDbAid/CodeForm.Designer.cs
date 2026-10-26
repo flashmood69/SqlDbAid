@@ -31,6 +31,8 @@ namespace SqlDbAid
             this.components = new System.ComponentModel.Container();
             this.rtbCode = new System.Windows.Forms.RichTextBox();
             this.codeMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.findToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.cutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pasteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -59,12 +61,13 @@ namespace SqlDbAid
             this.rtbCode.WordWrap = false;
             this.rtbCode.SelectionChanged += new System.EventHandler(this.rtbCode_SelectionChanged);
             this.rtbCode.TextChanged += new System.EventHandler(this.rtbCode_TextChanged);
-            this.rtbCode.KeyUp += new System.Windows.Forms.KeyEventHandler(this.rtbCode_KeyUp);
             this.rtbCode.MouseDown += new System.Windows.Forms.MouseEventHandler(this.rtbCode_MouseDown);
             // 
             // codeMenu
             // 
             this.codeMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.findToolStripMenuItem,
+            this.toolStripSeparator1,
             this.cutToolStripMenuItem,
             this.copyToolStripMenuItem,
             this.pasteToolStripMenuItem,
@@ -73,6 +76,19 @@ namespace SqlDbAid
             this.codeMenu.Name = "codeMenu";
             this.codeMenu.Size = new System.Drawing.Size(123, 92);
             // 
+            // findToolStripMenuItem
+            //
+            this.findToolStripMenuItem.Name = "findToolStripMenuItem";
+            this.findToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+F";
+            this.findToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.findToolStripMenuItem.Text = "&Find...";
+            this.findToolStripMenuItem.Click += new System.EventHandler(this.findToolStripMenuItem_Click);
+            //
+            // toolStripSeparator1
+            //
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
+            //
             // cutToolStripMenuItem
             // 
             this.cutToolStripMenuItem.Enabled = false;
@@ -150,6 +166,8 @@ namespace SqlDbAid
 
         private System.Windows.Forms.RichTextBox rtbCode;
         private System.Windows.Forms.ContextMenuStrip codeMenu;
+        private System.Windows.Forms.ToolStripMenuItem findToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripMenuItem cutToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem copyToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pasteToolStripMenuItem;

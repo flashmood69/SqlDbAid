@@ -264,7 +264,7 @@ namespace SqlDbAid
             // btnRefresh
             // 
             this.btnRefresh.Enabled = false;
-            this.btnRefresh.Location = new System.Drawing.Point(507, 127);
+            this.btnRefresh.Location = new System.Drawing.Point(507, 126);
             this.btnRefresh.Name = "btnRefresh";
             this.btnRefresh.Size = new System.Drawing.Size(60, 21);
             this.btnRefresh.TabIndex = 9;
@@ -276,7 +276,7 @@ namespace SqlDbAid
             // btnExport
             // 
             this.btnExport.Enabled = false;
-            this.btnExport.Location = new System.Drawing.Point(573, 127);
+            this.btnExport.Location = new System.Drawing.Point(573, 126);
             this.btnExport.Name = "btnExport";
             this.btnExport.Size = new System.Drawing.Size(60, 21);
             this.btnExport.TabIndex = 10;
@@ -824,7 +824,7 @@ namespace SqlDbAid
             this.lblContains.AutoSize = true;
             this.lblContains.Location = new System.Drawing.Point(254, 33);
             this.lblContains.Name = "lblContains";
-            this.lblContains.Size = new System.Drawing.Size(65, 13);
+            this.lblContains.Size = new System.Drawing.Size(66, 13);
             this.lblContains.TabIndex = 16;
             this.lblContains.Text = "Search Text";
             // 
@@ -835,8 +835,8 @@ namespace SqlDbAid
             this.txtContains.Name = "txtContains";
             this.txtContains.Size = new System.Drawing.Size(176, 20);
             this.txtContains.TabIndex = 6;
-            this.tltMain.SetToolTip(this.txtContains, "Get only objects containig\r\nthis text in their definition\r\n(regular expressions s" +
-        "upported).");
+            this.tltMain.SetToolTip(this.txtContains, "Filter objects by text in their SQL definitions when the list is refreshed.\r\nThe " +
+        "regular-expression option changes how this text is interpreted.");
             this.txtContains.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.txtContains_KeyPress);
             // 
             // cmbServer
@@ -1134,4 +1134,3 @@ namespace SqlDbAid
         private System.Windows.Forms.Label lblAuthentication;
     }
 }
-
