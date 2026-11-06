@@ -36,6 +36,7 @@ namespace SqlDbAid
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.datagridMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.viewCodeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.editCodeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.scriptSelectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.scriptInsertToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.scriptUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -140,6 +141,7 @@ namespace SqlDbAid
             // 
             this.datagridMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.viewCodeToolStripMenuItem,
+            this.editCodeToolStripMenuItem,
             this.scriptSelectToolStripMenuItem,
             this.scriptInsertToolStripMenuItem,
             this.scriptUpdateToolStripMenuItem,
@@ -158,6 +160,13 @@ namespace SqlDbAid
             this.viewCodeToolStripMenuItem.Text = "View Code";
             this.viewCodeToolStripMenuItem.Click += new System.EventHandler(this.viewCodeToolStripMenuItem_Click);
             // 
+            // editCodeToolStripMenuItem
+            //
+            this.editCodeToolStripMenuItem.Name = "editCodeToolStripMenuItem";
+            this.editCodeToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.editCodeToolStripMenuItem.Text = "Edit Code";
+            this.editCodeToolStripMenuItem.Click += new System.EventHandler(this.editCodeToolStripMenuItem_Click);
+            //
             // scriptSelectToolStripMenuItem
             // 
             this.scriptSelectToolStripMenuItem.Name = "scriptSelectToolStripMenuItem";
@@ -1061,6 +1070,7 @@ namespace SqlDbAid
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ContextMenuStrip datagridMenu;
         private System.Windows.Forms.ToolStripMenuItem viewCodeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem editCodeToolStripMenuItem;
         private System.Windows.Forms.Label lblContains;
         private System.Windows.Forms.TextBox txtContains;
         private System.Windows.Forms.ToolStripMenuItem scriptSelectToolStripMenuItem;

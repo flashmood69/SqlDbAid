@@ -406,7 +406,7 @@ namespace SqlDbAid
             txtContains.Enabled = false;
             chkRegex.Enabled = false;
             btnRefresh.Enabled = false;
-            Cursor = Cursors.WaitCursor;
+            UseWaitCursor = true;
 
             try
             {
@@ -495,7 +495,7 @@ namespace SqlDbAid
                 mRefreshingCode = false;
                 if (!mIsClosing && !IsDisposed)
                 {
-                    Cursor = Cursors.Default;
+                    UseWaitCursor = false;
                     cmbServer.Enabled = serverEnabled;
                     cmbDatabase.Enabled = databaseEnabled;
                     cmbAuthMode.Enabled = authEnabled;
@@ -681,7 +681,7 @@ namespace SqlDbAid
                     {
                         int objCount = 0;
 
-                        this.Cursor = Cursors.WaitCursor;
+                        UseWaitCursor = true;
 
                         if (Properties.Settings.Default.ScrSingleFileExport == true)
                         {
@@ -692,13 +692,13 @@ namespace SqlDbAid
                             objCount = ExportCodeMultiple(exportFolderBrowser.SelectedPath);
                         }
 
-                        this.Cursor = Cursors.Default;
+                        UseWaitCursor = false;
 
                         MessageBox.Show("Objects Exported: " + objCount.ToString(), "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
-                        this.Cursor = Cursors.Default;
+                        UseWaitCursor = false;
 
                         MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
@@ -1550,7 +1550,7 @@ namespace SqlDbAid
             bool authEnabled = cmbAuthMode.Enabled;
             cmbServer.Enabled = false;
             cmbAuthMode.Enabled = false;
-            Cursor = Cursors.WaitCursor;
+            UseWaitCursor = true;
             bool databaseListLoaded = false;
 
             try
@@ -1589,7 +1589,7 @@ namespace SqlDbAid
                 mLoadingDatabases = false;
                 if (!mIsClosing && !IsDisposed)
                 {
-                    Cursor = Cursors.Default;
+                    UseWaitCursor = false;
                     cmbServer.Enabled = serverEnabled;
                     cmbAuthMode.Enabled = authEnabled;
                     UpdateControlStatus();
@@ -1624,7 +1624,7 @@ namespace SqlDbAid
                 string databaseName = cmbDatabase.Text;
                 int executionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
                 mDbName = databaseName;
-                Cursor = Cursors.WaitCursor;
+                UseWaitCursor = true;
                 bool loadFailed = false;
 
                 cmbServer.Enabled = false;
@@ -1657,7 +1657,7 @@ namespace SqlDbAid
                 {
                     if (!mIsClosing && !IsDisposed && loadVersion == mObjectTypeLoadVersion)
                     {
-                        Cursor = Cursors.Default;
+                        UseWaitCursor = false;
                         cmbServer.Enabled = true;
                         cmbDatabase.Enabled = true;
                         cmbAuthMode.Enabled = true;
@@ -1673,7 +1673,7 @@ namespace SqlDbAid
             }
             else
             {
-                Cursor = Cursors.Default;
+                UseWaitCursor = false;
                 cmbServer.Enabled = true;
                 cmbDatabase.Enabled = true;
                 cmbAuthMode.Enabled = true;
@@ -2376,6 +2376,33 @@ namespace SqlDbAid
             }
         }
 
+        private void editCodeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mCurrentRow < 0)
+            {
+                return;
+            }
+
+            DataGridViewRow row = dgvCode.Rows[mCurrentRow];
+            string obj_schema = row.Cells["obj_schema"].Value.ToString();
+            string obj_name = row.Cells["obj_name"].Value.ToString();
+            string code = row.Cells["code"].Value.ToString();
+
+            ResultForm resultForm = new ResultForm();
+            resultForm.AppendTitle = string.Format(" ({0} - {1})", mDbName, cmbServer.Text);
+            resultForm.ShowInTaskbar = true;
+            resultForm.ShowIcon = true;
+            resultForm.Icon = this.Icon;
+            resultForm.ConnectionString = BuildConnectionString(mDbName);
+            resultForm.CommandText = code;
+            resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
+            resultForm.ShowQuery = true;
+            resultForm.FileName = string.Format("{0}.{1}", obj_schema, obj_name);
+            resultForm.AutoExec = false;
+
+            resultForm.Show();
+        }
+
         private void scriptSelectToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (mCurrentRow >= 0)
@@ -2532,7 +2559,7 @@ namespace SqlDbAid
 
             try
             {
-                this.Cursor = Cursors.WaitCursor;
+                UseWaitCursor = true;
 
                 using (var client = new WebClient())
                 {
@@ -2566,12 +2593,12 @@ namespace SqlDbAid
             }
             catch (Exception ex)
             {
-                this.Cursor = Cursors.Default;
+                UseWaitCursor = false;
                 MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                this.Cursor = Cursors.Default;
+                UseWaitCursor = false;
             }
 
             if (latestVersion != null && downloadUrl != "")
@@ -2594,7 +2621,7 @@ namespace SqlDbAid
 
                         try
                         {
-                            this.Cursor = Cursors.WaitCursor;
+                            UseWaitCursor = true;
 
                             WebClient client = new WebClient();
                             client.UseDefaultCredentials = true;
@@ -2605,12 +2632,12 @@ namespace SqlDbAid
                         }
                         catch (Exception ex)
                         {
-                            this.Cursor = Cursors.Default;
+                            UseWaitCursor = false;
                             MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         finally
                         {
-                            this.Cursor = Cursors.Default;
+                            UseWaitCursor = false;
                         }
                     }
                 }

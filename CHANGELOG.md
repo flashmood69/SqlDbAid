@@ -1,5 +1,9 @@
 # SqlDbAid Changelog
 
+## [v2.7.2.0]
+- Add an "Edit Code" command to the object grid's context menu.
+- Fix the busy cursor remaining active after asynchronously loading database objects.
+
 ## [v2.7.1.0]
 - Filter database objects by schema and name from the grid context menu.
 - Show active object filters in column headers and reflect row selection in the select-all checkbox.

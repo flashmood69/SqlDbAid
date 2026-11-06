@@ -53,6 +53,8 @@ namespace SqlDbAid
         private ContextMenuStrip mQueryEditorMenu;
         private ToolStripMenuItem mQueryUndoMenuItem;
         private ToolStripMenuItem mQueryRedoMenuItem;
+        private ToolStripMenuItem mQueryFindMenuItem;
+        private ToolStripMenuItem mQueryReplaceMenuItem;
         private ToolStripMenuItem mQueryFindNextMenuItem;
         private ToolStripMenuItem mQueryFindPreviousMenuItem;
         private readonly LinkedList<QueryEditorState> mQueryUndoHistory = new LinkedList<QueryEditorState>();
@@ -550,13 +552,13 @@ namespace SqlDbAid
             mQueryRedoMenuItem.ShortcutKeyDisplayString = "Ctrl+Y";
             mQueryRedoMenuItem.Click += (sender, e) => RedoQueryEdit();
 
-            ToolStripMenuItem findMenuItem = new ToolStripMenuItem("&Find...");
-            findMenuItem.ShortcutKeyDisplayString = "Ctrl+F";
-            findMenuItem.Click += queryFindToolStripMenuItem_Click;
+            mQueryFindMenuItem = new ToolStripMenuItem("&Find...");
+            mQueryFindMenuItem.ShortcutKeyDisplayString = "Ctrl+F";
+            mQueryFindMenuItem.Click += queryFindToolStripMenuItem_Click;
 
-            ToolStripMenuItem replaceMenuItem = new ToolStripMenuItem("&Replace...");
-            replaceMenuItem.ShortcutKeyDisplayString = "Ctrl+H";
-            replaceMenuItem.Click += queryReplaceToolStripMenuItem_Click;
+            mQueryReplaceMenuItem = new ToolStripMenuItem("&Replace...");
+            mQueryReplaceMenuItem.ShortcutKeyDisplayString = "Ctrl+H";
+            mQueryReplaceMenuItem.Click += queryReplaceToolStripMenuItem_Click;
 
             mQueryFindNextMenuItem = new ToolStripMenuItem("Find &Next");
             mQueryFindNextMenuItem.Enabled = false;
@@ -571,8 +573,8 @@ namespace SqlDbAid
                 mQueryUndoMenuItem,
                 mQueryRedoMenuItem,
                 new ToolStripSeparator(),
-                findMenuItem,
-                replaceMenuItem,
+                mQueryFindMenuItem,
+                mQueryReplaceMenuItem,
                 new ToolStripSeparator(),
                 mQueryFindNextMenuItem,
                 mQueryFindPreviousMenuItem
