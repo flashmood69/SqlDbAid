@@ -1,5 +1,8 @@
 # SqlDbAid Changelog
 
+## [v2.7.3.0]
+- Fix trailing newlines disappearing from the query editor during syntax highlighting.
+
 ## [v2.7.2.0]
 - Add an "Edit Code" command to the object grid's context menu.
 - Fix the busy cursor remaining active after asynchronously loading database objects.

@@ -832,6 +832,11 @@ namespace SqlDbAid
             }
 
             AppendRtfText(rtf, text, plainTextStart, text.Length - plainTextStart, searchMatches, ref searchMatchIndex);
+            if (text.Length > 0 && (text[text.Length - 1] == '\r' || text[text.Length - 1] == '\n'))
+            {
+                // RichTextBox drops the final empty paragraph when importing RTF.
+                rtf.Append(@"\par ");
+            }
             rtf.Append('}');
 
             rtbCode.Rtf = rtf.ToString();
