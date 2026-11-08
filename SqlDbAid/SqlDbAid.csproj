@@ -183,6 +183,8 @@
     </Compile>
     <Compile Include="Settings.cs" />
     <Compile Include="SqlHighlighter.cs" />
+    <Compile Include="SqlFormatter.cs" />
+    <Compile Include="SqlKeywords.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="SDAIcon.ico" />

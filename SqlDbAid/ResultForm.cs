@@ -57,6 +57,7 @@ namespace SqlDbAid
         private ToolStripMenuItem mQueryReplaceMenuItem;
         private ToolStripMenuItem mQueryFindNextMenuItem;
         private ToolStripMenuItem mQueryFindPreviousMenuItem;
+        private ToolStripMenuItem mQueryFormatSqlMenuItem;
         private readonly LinkedList<QueryEditorState> mQueryUndoHistory = new LinkedList<QueryEditorState>();
         private readonly LinkedList<QueryEditorState> mQueryRedoHistory = new LinkedList<QueryEditorState>();
         private QueryEditorState mLastQueryEditorState;
@@ -568,6 +569,9 @@ namespace SqlDbAid
             mQueryFindPreviousMenuItem.Enabled = false;
             mQueryFindPreviousMenuItem.Click += queryFindPreviousToolStripMenuItem_Click;
 
+            mQueryFormatSqlMenuItem = new ToolStripMenuItem("Format SQL");
+            mQueryFormatSqlMenuItem.Click += queryFormatSqlMenuItem_Click;
+
             mQueryEditorMenu.Items.AddRange(new ToolStripItem[]
             {
                 mQueryUndoMenuItem,
@@ -577,7 +581,9 @@ namespace SqlDbAid
                 mQueryReplaceMenuItem,
                 new ToolStripSeparator(),
                 mQueryFindNextMenuItem,
-                mQueryFindPreviousMenuItem
+                mQueryFindPreviousMenuItem,
+                new ToolStripSeparator(),
+                mQueryFormatSqlMenuItem
             });
             mQueryEditorMenu.Opening += (sender, e) => UpdateQueryEditMenuItems();
             txtQuery.ContextMenuStrip = mQueryEditorMenu;
@@ -1187,6 +1193,46 @@ namespace SqlDbAid
         private void queryFindPreviousToolStripMenuItem_Click(object sender, EventArgs e)
         {
             SelectQuerySearchMatch(-1);
+        }
+
+        private void queryFormatSqlMenuItem_Click(object sender, EventArgs e)
+        {
+            bool formatSelection = txtQuery.SelectionLength > 0;
+            int selectionStart = txtQuery.SelectionStart;
+            string source = formatSelection ? txtQuery.SelectedText : txtQuery.Text;
+            SqlFormatter.Options options = new SqlFormatter.Options
+            {
+                KeywordCase = (SqlFormatter.KeywordCaseStyle)Properties.Settings.Default.SqlFormatKeywordCase,
+                IdentifierQuoting = (SqlFormatter.IdentifierQuoteStyle)Properties.Settings.Default.SqlFormatIdentifierQuoting,
+                UseTabs = Properties.Settings.Default.SqlFormatUseTabs,
+                IndentSize = Properties.Settings.Default.SqlFormatIndentSize,
+                LogicalOperatorNewlineBefore = Properties.Settings.Default.SqlFormatLogicalOperatorNewlineBefore,
+                CommaPosition = (SqlFormatter.CommaPosition)Properties.Settings.Default.SqlFormatCommaPosition,
+                OnPosition = (SqlFormatter.OnPosition)Properties.Settings.Default.SqlFormatOnPosition,
+                TablePosition = (SqlFormatter.TablePosition)Properties.Settings.Default.SqlFormatTablePosition,
+                JoinIndentation = Properties.Settings.Default.SqlFormatJoinIndentation,
+                IndentJoinConditions = Properties.Settings.Default.SqlFormatIndentJoinConditions,
+                IndentLists = Properties.Settings.Default.SqlFormatIndentLists,
+                LinesBetweenQueries = Properties.Settings.Default.SqlFormatLinesBetweenQueries
+            };
+
+            try
+            {
+                string formatted = SqlFormatter.Format(source, options);
+                if (formatSelection)
+                {
+                    txtQuery.SelectedText = formatted;
+                }
+                else
+                {
+                    txtQuery.Text = formatted;
+                    txtQuery.Select(Math.Min(selectionStart, txtQuery.TextLength), 0);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                MessageBox.Show(this, ex.Message, "SQL Formatting", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void dataExporter_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

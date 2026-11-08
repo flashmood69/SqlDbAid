@@ -42,6 +42,21 @@ namespace SqlDbAid
             Properties.Settings.Default.TlsGetLockedObjectName = chkGetLockedObjectName.Checked;
             Properties.Settings.Default.TlsTopQueriesWithin = (int)(numTopQueriesWithin.Value);
 
+            Properties.Settings.Default.SqlFormatKeywordCase = cmbSqlFormatKeywordCase.SelectedIndex;
+            Properties.Settings.Default.SqlFormatIdentifierQuoting = cmbSqlFormatIdentifierQuoting.SelectedIndex;
+            Properties.Settings.Default.SqlFormatUseTabs = chkSqlFormatUseTabs.Checked;
+            Properties.Settings.Default.SqlFormatIndentSize = (int)numSqlFormatIndentSize.Value;
+            Properties.Settings.Default.SqlFormatLogicalOperatorNewlineBefore = chkSqlFormatLogicalOperatorNewlineBefore.Checked;
+            Properties.Settings.Default.SqlFormatCommaPosition = cmbSqlFormatCommaPosition.SelectedIndex;
+            Properties.Settings.Default.SqlFormatOnPosition = cmbSqlFormatOnPosition.SelectedIndex == 1
+                ? (int)SqlFormatter.OnPosition.Before
+                : (int)SqlFormatter.OnPosition.After;
+            Properties.Settings.Default.SqlFormatTablePosition = cmbSqlFormatTablePosition.SelectedIndex;
+            Properties.Settings.Default.SqlFormatJoinIndentation = (int)numSqlFormatJoinIndentation.Value;
+            Properties.Settings.Default.SqlFormatIndentJoinConditions = chkSqlFormatIndentJoinConditions.Checked;
+            Properties.Settings.Default.SqlFormatIndentLists = chkSqlFormatIndentLists.Checked;
+            Properties.Settings.Default.SqlFormatLinesBetweenQueries = (int)numSqlFormatLinesBetweenQueries.Value;
+
             string serverList = "";
 
             for (int i = 0; i < lstServer.Items.Count; i++)
@@ -54,6 +69,7 @@ namespace SqlDbAid
             }
 
             Properties.Settings.Default.SrvServers = serverList;
+            Properties.Settings.Default.Save();
 
             this.Close();
         }
@@ -73,6 +89,21 @@ namespace SqlDbAid
             chkHideAppQueries.Checked = Properties.Settings.Default.TlsHideAppQueries;
             chkGetLockedObjectName.Checked = Properties.Settings.Default.TlsGetLockedObjectName;
             numTopQueriesWithin.Value = Properties.Settings.Default.TlsTopQueriesWithin;
+
+            SetComboBoxIndex(cmbSqlFormatKeywordCase, Properties.Settings.Default.SqlFormatKeywordCase);
+            SetComboBoxIndex(cmbSqlFormatIdentifierQuoting, Properties.Settings.Default.SqlFormatIdentifierQuoting);
+            chkSqlFormatUseTabs.Checked = Properties.Settings.Default.SqlFormatUseTabs;
+            numSqlFormatIndentSize.Value = ClampValue(numSqlFormatIndentSize, Properties.Settings.Default.SqlFormatIndentSize);
+            chkSqlFormatLogicalOperatorNewlineBefore.Checked = Properties.Settings.Default.SqlFormatLogicalOperatorNewlineBefore;
+            SetComboBoxIndex(cmbSqlFormatCommaPosition, Properties.Settings.Default.SqlFormatCommaPosition);
+            SetComboBoxIndex(
+                cmbSqlFormatOnPosition,
+                Properties.Settings.Default.SqlFormatOnPosition == (int)SqlFormatter.OnPosition.Before ? 1 : 0);
+            SetComboBoxIndex(cmbSqlFormatTablePosition, Properties.Settings.Default.SqlFormatTablePosition);
+            numSqlFormatJoinIndentation.Value = ClampValue(numSqlFormatJoinIndentation, Properties.Settings.Default.SqlFormatJoinIndentation);
+            chkSqlFormatIndentJoinConditions.Checked = Properties.Settings.Default.SqlFormatIndentJoinConditions;
+            chkSqlFormatIndentLists.Checked = Properties.Settings.Default.SqlFormatIndentLists;
+            numSqlFormatLinesBetweenQueries.Value = ClampValue(numSqlFormatLinesBetweenQueries, Properties.Settings.Default.SqlFormatLinesBetweenQueries);
 
             string[] values = Properties.Settings.Default.SrvServers.Split('#');
 
@@ -255,6 +286,16 @@ namespace SqlDbAid
                     this.Cursor = Cursors.Default;
                 }
             }
+        }
+
+        private static void SetComboBoxIndex(ComboBox comboBox, int value)
+        {
+            comboBox.SelectedIndex = value >= 0 && value < comboBox.Items.Count ? value : 0;
+        }
+
+        private static decimal ClampValue(NumericUpDown control, int value)
+        {
+            return Math.Max(control.Minimum, Math.Min(control.Maximum, (decimal)value));
         }
     }
 }

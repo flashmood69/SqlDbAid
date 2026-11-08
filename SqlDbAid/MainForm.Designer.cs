@@ -121,6 +121,7 @@ namespace SqlDbAid
             this.cmbServer = new System.Windows.Forms.ComboBox();
             this.tltMain = new System.Windows.Forms.ToolTip(this.components);
             this.chlObjType = new System.Windows.Forms.CheckedListBox();
+            this.chkObjTypeSelectAll = new System.Windows.Forms.CheckBox();
             this.dgvCode = new System.Windows.Forms.DataGridView();
             this.selected = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.obj_type = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -276,7 +277,7 @@ namespace SqlDbAid
             this.btnRefresh.Location = new System.Drawing.Point(507, 126);
             this.btnRefresh.Name = "btnRefresh";
             this.btnRefresh.Size = new System.Drawing.Size(60, 21);
-            this.btnRefresh.TabIndex = 9;
+            this.btnRefresh.TabIndex = 10;
             this.btnRefresh.Text = "&Refresh";
             this.tltMain.SetToolTip(this.btnRefresh, "Refresh database objects script.");
             this.btnRefresh.UseVisualStyleBackColor = true;
@@ -288,7 +289,7 @@ namespace SqlDbAid
             this.btnExport.Location = new System.Drawing.Point(573, 126);
             this.btnExport.Name = "btnExport";
             this.btnExport.Size = new System.Drawing.Size(60, 21);
-            this.btnExport.TabIndex = 10;
+            this.btnExport.TabIndex = 11;
             this.btnExport.Text = "&Script";
             this.tltMain.SetToolTip(this.btnExport, "Export selected objects script.");
             this.btnExport.UseVisualStyleBackColor = true;
@@ -868,8 +869,21 @@ namespace SqlDbAid
             this.chlObjType.Name = "chlObjType";
             this.chlObjType.Size = new System.Drawing.Size(176, 94);
             this.chlObjType.TabIndex = 8;
-            this.tltMain.SetToolTip(this.chlObjType, "INS / DEL select / unselect all");
-            this.chlObjType.KeyDown += new System.Windows.Forms.KeyEventHandler(this.chlObjType_KeyDown);
+            this.chlObjType.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.chlObjType_ItemCheck);
+            //
+            // chkObjTypeSelectAll
+            //
+            this.chkObjTypeSelectAll.AutoCheck = false;
+            this.chkObjTypeSelectAll.AutoSize = true;
+            this.chkObjTypeSelectAll.Enabled = false;
+            this.chkObjTypeSelectAll.Location = new System.Drawing.Point(507, 56);
+            this.chkObjTypeSelectAll.Name = "chkObjTypeSelectAll";
+            this.chkObjTypeSelectAll.Size = new System.Drawing.Size(71, 17);
+            this.chkObjTypeSelectAll.TabIndex = 9;
+            this.chkObjTypeSelectAll.Text = "Select All";
+            this.chkObjTypeSelectAll.ThreeState = true;
+            this.chkObjTypeSelectAll.UseVisualStyleBackColor = true;
+            this.chkObjTypeSelectAll.Click += new System.EventHandler(this.chkObjTypeSelectAll_Click);
             // 
             // dgvCode
             // 
@@ -918,7 +932,7 @@ namespace SqlDbAid
             this.dgvCode.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             this.dgvCode.ShowEditingIcon = false;
             this.dgvCode.Size = new System.Drawing.Size(667, 299);
-            this.dgvCode.TabIndex = 11;
+            this.dgvCode.TabIndex = 12;
             this.dgvCode.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dgvCode_CellFormatting);
             this.dgvCode.CellMouseDoubleClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.dgvCode_CellMouseDoubleClick);
             this.dgvCode.ColumnHeaderMouseClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.dgvCode_ColumnHeaderMouseClick);
@@ -1007,6 +1021,7 @@ namespace SqlDbAid
             this.ClientSize = new System.Drawing.Size(684, 486);
             this.Controls.Add(this.lblAuthentication);
             this.Controls.Add(this.chlObjType);
+            this.Controls.Add(this.chkObjTypeSelectAll);
             this.Controls.Add(this.chkRegex);
             this.Controls.Add(this.dgvCode);
             this.Controls.Add(this.cmbServer);
@@ -1140,6 +1155,7 @@ namespace SqlDbAid
         private System.Windows.Forms.ToolStripMenuItem missingIndexesToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem plansCacheToolStripMenuItem;
         private System.Windows.Forms.CheckedListBox chlObjType;
+        private System.Windows.Forms.CheckBox chkObjTypeSelectAll;
         private System.Windows.Forms.ToolStripMenuItem deadlocksToolStripMenuItem;
         private System.Windows.Forms.Label lblAuthentication;
     }

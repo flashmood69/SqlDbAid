@@ -395,6 +395,7 @@ namespace SqlDbAid
             bool databaseEnabled = cmbDatabase.Enabled;
             bool authEnabled = cmbAuthMode.Enabled;
             bool objectTypesEnabled = chlObjType.Enabled;
+            bool objectTypeSelectEnabled = chkObjTypeSelectAll.Enabled;
             bool searchEnabled = txtContains.Enabled;
             bool regexEnabled = chkRegex.Enabled;
             bool refreshEnabled = btnRefresh.Enabled;
@@ -403,6 +404,7 @@ namespace SqlDbAid
             cmbDatabase.Enabled = false;
             cmbAuthMode.Enabled = false;
             chlObjType.Enabled = false;
+            chkObjTypeSelectAll.Enabled = false;
             txtContains.Enabled = false;
             chkRegex.Enabled = false;
             btnRefresh.Enabled = false;
@@ -500,6 +502,7 @@ namespace SqlDbAid
                     cmbDatabase.Enabled = databaseEnabled;
                     cmbAuthMode.Enabled = authEnabled;
                     chlObjType.Enabled = objectTypesEnabled;
+                    chkObjTypeSelectAll.Enabled = objectTypeSelectEnabled;
                     txtContains.Enabled = searchEnabled;
                     chkRegex.Enabled = regexEnabled;
                     btnRefresh.Enabled = refreshEnabled;
@@ -868,6 +871,7 @@ namespace SqlDbAid
             objectsCacheToolStripMenuItem.Enabled = databaseLevel;
 
             chlObjType.Enabled = databaseLevel;
+            UpdateObjectTypeSelectCheckBox();
 
             columnInconsistencyToolStripMenuItem.Enabled = databaseLevel;
 
@@ -1680,6 +1684,42 @@ namespace SqlDbAid
             }
 
             UpdateControlStatus();
+        }
+
+        private void chkObjTypeSelectAll_Click(object sender, EventArgs e)
+        {
+            bool selectAll = chlObjType.CheckedItems.Count != chlObjType.Items.Count;
+            for (int i = 0; i < chlObjType.Items.Count; i++)
+                chlObjType.SetItemChecked(i, selectAll);
+
+            UpdateObjectTypeSelectCheckBox();
+        }
+
+        private void chlObjType_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            int checkedCount = chlObjType.CheckedItems.Count;
+            if (e.CurrentValue == CheckState.Checked)
+                checkedCount--;
+            if (e.NewValue == CheckState.Checked)
+                checkedCount++;
+
+            chkObjTypeSelectAll.CheckState = checkedCount == 0
+                ? CheckState.Unchecked
+                : checkedCount == chlObjType.Items.Count
+                    ? CheckState.Checked
+                    : CheckState.Indeterminate;
+        }
+
+        private void UpdateObjectTypeSelectCheckBox()
+        {
+            int itemCount = chlObjType.Items.Count;
+            chkObjTypeSelectAll.Enabled = cmbDatabase.SelectedIndex > 0 && itemCount > 0;
+            int checkedCount = chlObjType.CheckedItems.Count;
+            chkObjTypeSelectAll.CheckState = checkedCount == 0
+                ? CheckState.Unchecked
+                : checkedCount == itemCount
+                    ? CheckState.Checked
+                    : CheckState.Indeterminate;
         }
 
         private async void btnRefresh_Click(object sender, EventArgs e)
@@ -2648,23 +2688,6 @@ namespace SqlDbAid
             }
         }
 
-        private void chlObjType_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Delete)
-            {
-                for (int i = 0; i < chlObjType.Items.Count; i++)
-                {
-                    chlObjType.SetItemChecked(i, false);
-                }
-            }
-            else if (e.KeyCode == Keys.Insert)
-            {
-                for (int i = 0; i < chlObjType.Items.Count; i++)
-                {
-                    chlObjType.SetItemChecked(i, true);
-                }
-            }
-        }
     }
 
     #endregion

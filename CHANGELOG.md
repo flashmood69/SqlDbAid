@@ -1,5 +1,10 @@
 # SqlDbAid Changelog
 
+## [v2.7.4.0]
+- Add SQL formatting to the query editor.
+- Share SQL word classifications between the formatter and highlighter.
+- Add an explicit Select All/Unselect All checkbox to the object-type filter.
+
 ## [v2.7.3.0]
 - Fix trailing newlines disappearing from the query editor during syntax highlighting.
 

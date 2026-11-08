@@ -216,5 +216,149 @@ namespace SqlDbAid.Properties {
                 this["SrvServers"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int SqlFormatKeywordCase {
+            get {
+                return ((int)(this["SqlFormatKeywordCase"]));
+            }
+            set {
+                this["SqlFormatKeywordCase"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int SqlFormatIdentifierQuoting {
+            get {
+                return ((int)(this["SqlFormatIdentifierQuoting"]));
+            }
+            set {
+                this["SqlFormatIdentifierQuoting"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool SqlFormatUseTabs {
+            get {
+                return ((bool)(this["SqlFormatUseTabs"]));
+            }
+            set {
+                this["SqlFormatUseTabs"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("4")]
+        public int SqlFormatIndentSize {
+            get {
+                return ((int)(this["SqlFormatIndentSize"]));
+            }
+            set {
+                this["SqlFormatIndentSize"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool SqlFormatLogicalOperatorNewlineBefore {
+            get {
+                return ((bool)(this["SqlFormatLogicalOperatorNewlineBefore"]));
+            }
+            set {
+                this["SqlFormatLogicalOperatorNewlineBefore"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int SqlFormatCommaPosition {
+            get {
+                return ((int)(this["SqlFormatCommaPosition"]));
+            }
+            set {
+                this["SqlFormatCommaPosition"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int SqlFormatOnPosition {
+            get {
+                return ((int)(this["SqlFormatOnPosition"]));
+            }
+            set {
+                this["SqlFormatOnPosition"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int SqlFormatTablePosition {
+            get {
+                return ((int)(this["SqlFormatTablePosition"]));
+            }
+            set {
+                this["SqlFormatTablePosition"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int SqlFormatJoinIndentation {
+            get {
+                return ((int)(this["SqlFormatJoinIndentation"]));
+            }
+            set {
+                this["SqlFormatJoinIndentation"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool SqlFormatIndentJoinConditions {
+            get {
+                return ((bool)(this["SqlFormatIndentJoinConditions"]));
+            }
+            set {
+                this["SqlFormatIndentJoinConditions"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool SqlFormatIndentLists {
+            get {
+                return ((bool)(this["SqlFormatIndentLists"]));
+            }
+            set {
+                this["SqlFormatIndentLists"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int SqlFormatLinesBetweenQueries {
+            get {
+                return ((int)(this["SqlFormatLinesBetweenQueries"]));
+            }
+            set {
+                this["SqlFormatLinesBetweenQueries"] = value;
+            }
+        }
     }
 }
