@@ -8,6 +8,8 @@ SqlDbAid is an intuitive standalone application that enables you to easily scrip
 
 ### Portable
 
+No installer is required; run `SqlDbAid.exe` directly from the extracted folder. User settings are stored in the current Windows profile rather than beside the executable, so moving the application folder does not move those settings.
+
 ### User-Friendly Interface
 ![Main Interface](Res/F01-MainForm.png)
 
@@ -108,6 +110,15 @@ See the [CHANGELOG.md](CHANGELOG.md) file for details on version history and upd
 ## Contributing
 
 Contributions are welcome! Feel free to submit issues or pull requests to help improve SqlDbAid.
+
+### Formatter Regression Checks
+
+The package-free formatter checks can be built and run with Visual Studio MSBuild:
+
+```powershell
+MSBuild.exe SqlDbAid.Tests\SqlDbAid.Tests.csproj /p:Platform=AnyCPU
+SqlDbAid.Tests\bin\Debug\SqlDbAid.Tests.exe
+```
 
 ## Support
 

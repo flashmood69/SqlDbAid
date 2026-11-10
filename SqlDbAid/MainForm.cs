@@ -1,16 +1,17 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 
@@ -310,7 +311,11 @@ namespace SqlDbAid
                     dr.Close();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(
+                    "Feature probe failed (" + queryId + ", " + objectName + "." + columnName + "): " + ex.Message);
+            }
 
             return supported;
         }
@@ -498,6 +503,7 @@ namespace SqlDbAid
                 if (!mIsClosing && !IsDisposed)
                 {
                     UseWaitCursor = false;
+                    dgvCode.UseWaitCursor = false;
                     cmbServer.Enabled = serverEnabled;
                     cmbDatabase.Enabled = databaseEnabled;
                     cmbAuthMode.Enabled = authEnabled;
@@ -2592,6 +2598,26 @@ namespace SqlDbAid
             IndexesStatus(3, dgvCode.Rows[mCurrentRow].Cells["obj_name"].Value.ToString(), dgvCode.Rows[mCurrentRow].Cells["obj_schema"].Value.ToString());
         }
 
+        [DataContract]
+        private sealed class UpdateRelease
+        {
+            [DataMember(Name = "tag_name")]
+            public string TagName { get; set; }
+
+            [DataMember(Name = "assets")]
+            public List<UpdateAsset> Assets { get; set; }
+        }
+
+        [DataContract]
+        private sealed class UpdateAsset
+        {
+            [DataMember(Name = "name")]
+            public string Name { get; set; }
+
+            [DataMember(Name = "browser_download_url")]
+            public string BrowserDownloadUrl { get; set; }
+        }
+
         private void updatesToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Version latestVersion = null;
@@ -2606,25 +2632,28 @@ namespace SqlDbAid
                     client.Headers.Add("User-Agent", "AppUpdateChecker");
                     string json = client.DownloadString(HttpUrl.AppVersionUrl);
 
-                    var serializer = new JavaScriptSerializer();
-                    var release = serializer.Deserialize<Dictionary<string, object>>(json);
+                    var serializer = new DataContractJsonSerializer(typeof(UpdateRelease));
+                    UpdateRelease release;
+                    using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+                    {
+                        release = (UpdateRelease)serializer.ReadObject(stream);
+                    }
 
                     // Parse version
-                    string tagName = (string)release["tag_name"];
-                    latestVersion = new Version(tagName.TrimStart('v', 'V'));
+                    latestVersion = new Version(release.TagName.TrimStart('v', 'V'));
 
                     // Find the correct asset
                     string expectedAssetName = $"{HttpUrl.RepoName}-v{latestVersion}.zip".ToLower();
                     //downloadUrl = (string)release["html_url"]; // Fallback to release page
 
-                    if (release.ContainsKey("assets") && release["assets"] is ArrayList assets)
+                    if (release.Assets != null)
                     {
-                        foreach (Dictionary<string, object> asset in assets)
+                        foreach (UpdateAsset asset in release.Assets)
                         {
-                            string assetName = ((string)asset["name"]).ToLower();
+                            string assetName = asset.Name.ToLower();
                             if (assetName == expectedAssetName)
                             {
-                                downloadUrl = (string)asset["browser_download_url"];
+                                downloadUrl = asset.BrowserDownloadUrl;
                                 break;
                             }
                         }

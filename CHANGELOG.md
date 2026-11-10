@@ -1,5 +1,10 @@
 # SqlDbAid Changelog
 
+## [v2.7.5.0]
+- Replace the update check's JSON dependency with the .NET serializer.
+- Log feature-probe failures in debug output and document portable settings.
+- Explicitly reset the object grid's wait cursor after asynchronous refreshes.
+
 ## [v2.7.4.0]
 - Add SQL formatting to the query editor.
 - Share SQL word classifications between the formatter and highlighter.

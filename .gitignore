@@ -80,6 +80,7 @@ ScaffoldingReadMe.txt
 SqlDbAid/.vs/
 SqlDbAid/bin/
 SqlDbAid/obj/
+SqlDbAid.Tests/
 [Dd]ist/
 build.bat
 .tr*
