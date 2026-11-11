@@ -38,6 +38,10 @@ namespace SqlDbAid
 
         string mTableSchema = "";
         string mTableName = "";
+        bool mIdentityInsert = false;
+        int mInsertGoEvery = 1;
+
+        bool mQueryCancelIssued = false;
 
         string[] mColumnTypes;
 
@@ -130,6 +134,21 @@ namespace SqlDbAid
             set { mTableName = value; }
         }
 
+        public bool IdentityInsert
+        {
+            get { return mIdentityInsert; }
+            set { mIdentityInsert = value; }
+        }
+
+        /// <summary>
+        /// Number of INSERT statements per GO batch in insert scripts (0 = no GO between inserts).
+        /// </summary>
+        public int InsertGoEvery
+        {
+            get { return mInsertGoEvery; }
+            set { mInsertGoEvery = Math.Max(0, value); }
+        }
+
         public int ExecutionTimeout
         {
             get { return mExecutionTimeout; }
@@ -163,6 +182,77 @@ namespace SqlDbAid
             return "0x" + BitConverter.ToString(binary).Replace("-", "");
         }
 
+        internal static string QuoteIdentifier(string name)
+        {
+            return "[" + name.Replace("]", "]]") + "]";
+        }
+
+        private static string EscapeFormat(string text)
+        {
+            return text.Replace("{", "{{").Replace("}", "}}");
+        }
+
+        private static bool IsCancelError(SqlError err)
+        {
+            return err.Number == 0 && err.Class == 11;
+        }
+
+        private static bool IsCancelException(SqlException ex)
+        {
+            foreach (SqlError err in ex.Errors)
+            {
+                if (IsCancelError(err))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void CloseReader(SqlCommand cmd, SqlDataReader dr, bool moreRows)
+        {
+            if (moreRows)
+            {
+                // Stop the server from streaming the remaining rows: Close() would otherwise drain them.
+                mQueryCancelIssued = true;
+                cmd.Cancel();
+
+                try
+                {
+                    dr.Close();
+                }
+                catch (SqlException ex) when (IsCancelException(ex))
+                {
+                }
+            }
+            else
+            {
+                dr.Close();
+            }
+        }
+
+        private static string FormatScriptValue(object value)
+        {
+            if (value is double)
+            {
+                return ((double)value).ToString("R", CultureInfo.InvariantCulture);
+            }
+
+            if (value is float)
+            {
+                return ((float)value).ToString("R", CultureInfo.InvariantCulture);
+            }
+
+            IFormattable formattable = value as IFormattable;
+            if (formattable != null)
+            {
+                return formattable.ToString(null, CultureInfo.InvariantCulture);
+            }
+
+            return value.ToString();
+        }
+
         private void TxtExport()
         {
             mRowCount = 0;
@@ -183,8 +273,11 @@ namespace SqlDbAid
                 }
                 else
                 {
-                    flEnc = Encoding.Default;
+                    // UTF-8 (with BOM, like insert scripts) so no character is lost; the ANSI code page wrote '?' for unsupported characters.
+                    flEnc = Encoding.UTF8;
                 }
+
+                bool moreRows = false;
 
                 using (StreamWriter sw = new System.IO.StreamWriter(mFileName.ToString(), false, flEnc))
                 {
@@ -240,7 +333,7 @@ namespace SqlDbAid
 
                     if (byteArrayIdx.Count > 0)
                     {
-                        while (dr.Read() && !this.CancellationPending)
+                        while ((moreRows = dr.Read()) && !this.CancellationPending)
                         {
                             mRowCount++;
                             if (mRowCount % 1000 == 0)
@@ -263,7 +356,7 @@ namespace SqlDbAid
                     }
                     else
                     {
-                        while (dr.Read() && !this.CancellationPending)
+                        while ((moreRows = dr.Read()) && !this.CancellationPending)
                         {
                             mRowCount++;
                             if (mRowCount % 1000 == 0)
@@ -279,7 +372,7 @@ namespace SqlDbAid
                     sw.Close();
                 }
 
-                dr.Close();
+                CloseReader(cmd, dr, moreRows);
             }
         }
 
@@ -306,6 +399,8 @@ namespace SqlDbAid
                     flEnc = Encoding.UTF8;
                 }
 
+                bool moreRows = false;
+
                 using (StreamWriter sw = new System.IO.StreamWriter(mFileName.ToString(), false, flEnc))
                 {
                     object[] items = new object[dr.FieldCount];
@@ -318,7 +413,14 @@ namespace SqlDbAid
                     int fieldCount = dr.FieldCount;
                     mColumnTypes = new string[fieldCount];
 
-                    rowFormat.AppendFormat("INSERT INTO [{0}].[{1}] (", mTableSchema, mTableName);
+                    string tableName = QuoteIdentifier(mTableSchema) + "." + QuoteIdentifier(mTableName);
+
+                    if (mIdentityInsert)
+                    {
+                        sw.Write("SET IDENTITY_INSERT {0} ON\r\nGO\r\n", tableName);
+                    }
+
+                    rowFormat.AppendFormat("INSERT INTO {0} (", EscapeFormat(tableName));
                     valueFormat.Append(" VALUES (");
 
                     for (int i = 0; i < fieldCount; i++)
@@ -331,7 +433,7 @@ namespace SqlDbAid
                             valueFormat.Append(",");
                         }
 
-                        rowFormat.AppendFormat("[{0}]", dr.GetName(i));
+                        rowFormat.Append(EscapeFormat(QuoteIdentifier(dr.GetName(i))));
                         valueFormat.AppendFormat("{0}{1}{2}", "{", i, "}");
 
                         if (dr.GetDataTypeName(i).ToLower() == "timestamp")
@@ -340,7 +442,7 @@ namespace SqlDbAid
                         }
                         else if (mColumnTypes[i].ToLower().Contains("string") || dr.GetDataTypeName(i).ToLower() == "sql_variant")
                         {
-                            if ("#nchar#ntext#nvarchar#sysname#".Contains(string.Format("#{0}#", dr.GetDataTypeName(i).ToLower())))
+                            if ("#nchar#ntext#nvarchar#sysname#xml#".Contains(string.Format("#{0}#", dr.GetDataTypeName(i).ToLower())))
                             {
                                 typeArray[i] = -1;
                             }
@@ -360,10 +462,10 @@ namespace SqlDbAid
                     }
 
                     rowFormat.Append(")");
-                    valueFormat.Append(")\r\nGO\r\n");
+                    valueFormat.Append(")\r\n");
                     rowFormat.Append(valueFormat.ToString());
 
-                    while (dr.Read() && !this.CancellationPending)
+                    while ((moreRows = dr.Read()) && !this.CancellationPending)
                     {
                         mRowCount++;
                         if (mRowCount % 1000 == 0)
@@ -388,7 +490,7 @@ namespace SqlDbAid
                             }
                             else if (typeArray[i] == 1)
                             {
-                                fields[i] = items[i];
+                                fields[i] = FormatScriptValue(items[i]);
                             }
                             else if (typeArray[i] == 2)
                             {
@@ -401,13 +503,29 @@ namespace SqlDbAid
                         }
 
                         sw.Write(rowFormat.ToString(), fields);
+
+                        if (mInsertGoEvery > 0 && mRowCount % mInsertGoEvery == 0)
+                        {
+                            sw.Write("GO\r\n");
+                        }
+                    }
+
+                    // Close the last, partial batch.
+                    if (mInsertGoEvery > 1 && mRowCount % mInsertGoEvery != 0)
+                    {
+                        sw.Write("GO\r\n");
+                    }
+
+                    if (mIdentityInsert)
+                    {
+                        sw.Write("SET IDENTITY_INSERT {0} OFF\r\nGO\r\n", tableName);
                     }
 
                     sw.Flush();
                     sw.Close();
                 }
 
-                dr.Close();
+                CloseReader(cmd, dr, moreRows);
             }
         }
 
@@ -473,6 +591,8 @@ namespace SqlDbAid
                     }
                 }
 
+                bool moreRows = false;
+
                 if (dr.HasRows)
                 {
                     int maxRows = mMaxRows;
@@ -483,9 +603,19 @@ namespace SqlDbAid
 
                     object[] items = new object[dr.FieldCount];
 
+                    // Binary values go into untyped (string) columns: store them as 0x-hex instead of "System.Byte[]".
+                    List<int> binaryIdx = new List<int>();
+                    for (int i = 0; i < dr.FieldCount; i++)
+                    {
+                        if (mColumnTypes[i] == "Byte[]" || mColumnTypes[i] == "")
+                        {
+                            binaryIdx.Add(i);
+                        }
+                    }
+
                     if (nullType)
                     {
-                        while (dr.Read() && !this.CancellationPending && mRowCount != maxRows)
+                        while ((moreRows = dr.Read()) && !this.CancellationPending && mRowCount != maxRows)
                         {
                             mRowCount++;
                             if (mRowCount % 1000 == 0)
@@ -504,12 +634,13 @@ namespace SqlDbAid
                                     items[i] = dr[i];
                                 }
                             }
+                            ConvertBinaryValues(items, binaryIdx);
                             mResultTable.LoadDataRow(items, false);
                         }
                     }
                     else
                     {
-                        while (dr.Read() && !this.CancellationPending && mRowCount != maxRows)
+                        while ((moreRows = dr.Read()) && !this.CancellationPending && mRowCount != maxRows)
                         {
                             mRowCount++;
                             if (mRowCount % 1000 == 0)
@@ -517,6 +648,7 @@ namespace SqlDbAid
                                 this.ReportProgress(mRowCount);
                             }
                             dr.GetValues(items);
+                            ConvertBinaryValues(items, binaryIdx);
                             mResultTable.LoadDataRow(items, false);
                         }
                     }
@@ -530,7 +662,19 @@ namespace SqlDbAid
                     }
                 }
 
-                dr.Close();
+                CloseReader(cmd, dr, moreRows);
+            }
+        }
+
+        private void ConvertBinaryValues(object[] items, List<int> binaryIdx)
+        {
+            foreach (int i in binaryIdx)
+            {
+                byte[] binary = items[i] as byte[];
+                if (binary != null)
+                {
+                    items[i] = BinaryToString(binary);
+                }
             }
         }
 
@@ -543,6 +687,11 @@ namespace SqlDbAid
         {
             foreach (SqlError err in args.Errors)
             {
+                if (mQueryCancelIssued && IsCancelError(err))
+                {
+                    continue;
+                }
+
                 mMessage += string.Format("{0} - Line: {1} Message: {2}\r\n", string.Format("{0:s}", DateTime.Now).Replace("T", " "), err.LineNumber, err.Message);
             }
         }
@@ -550,6 +699,8 @@ namespace SqlDbAid
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
         protected override void OnDoWork(DoWorkEventArgs e)
         {
+            mQueryCancelIssued = false;
+
             if (mExportType == OutputType.Script)
             {
                 CultureInfo enCulture = new CultureInfo("en-US");

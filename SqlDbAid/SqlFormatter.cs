@@ -64,7 +64,8 @@ namespace SqlDbAid
             Literal,
             QuotedIdentifier,
             Comment,
-            Symbol
+            Symbol,
+            BatchSeparator
         }
 
         private enum ParenKind
@@ -147,6 +148,31 @@ namespace SqlDbAid
 
                 Token token = tokens[i];
                 string upper = token.Kind == TokenKind.Word ? token.Text.ToUpperInvariant() : "";
+
+                if (token.Kind == TokenKind.BatchSeparator)
+                {
+                    // GO ends the batch: keep it on its own line directly below the batch.
+                    writer.RemoveTrailingBlankLines();
+                    writer.NewLine(0);
+                    writer.Append(new Token(
+                        ApplyCase(token.Text.Substring(0, 2), options.KeywordCase) + token.Text.Substring(2),
+                        TokenKind.BatchSeparator));
+                    writer.NewLine(0);
+                    if (i < tokens.Count - 1)
+                        writer.AddBlankLines(options.LinesBetweenQueries);
+
+                    parenKinds.Clear();
+                    outerStatementIndents.Clear();
+                    outerClauses.Clear();
+                    outerLastWords.Clear();
+                    outerBetweenPending.Clear();
+                    caseIndents.Clear();
+                    statementIndent = 0;
+                    clause = "";
+                    lastSignificantWord = "";
+                    betweenPending = false;
+                    continue;
+                }
 
                 if (token.Kind == TokenKind.Comment)
                 {
@@ -632,7 +658,9 @@ namespace SqlDbAid
             if (isCatalogWord)
                 value = ApplyCase(value, options.KeywordCase);
 
+            // Variables (@name) and system functions (@@name) can never be quoted.
             if (options.IdentifierQuoting == IdentifierQuoteStyle.None ||
+                value.StartsWith("@", StringComparison.Ordinal) ||
                 isCatalogWord ||
                 IsFunctionName(tokens, index) || lastWord == "AS" ||
                 IsImplicitTableAlias(clause, lastWord))
@@ -765,11 +793,22 @@ namespace SqlDbAid
                     continue;
                 }
 
+                if (c == 'G' || c == 'g')
+                {
+                    string separator = TryReadBatchSeparator(sql, ref i);
+                    if (separator != null)
+                    {
+                        tokens.Add(new Token(separator, TokenKind.BatchSeparator));
+                        continue;
+                    }
+                }
+
                 if (char.IsLetter(c) || c == '_' || c == '@' || c == '#' || c == '$')
                 {
                     int start = i++;
                     while (i < sql.Length &&
-                        (char.IsLetterOrDigit(sql[i]) || sql[i] == '_' || sql[i] == '$' || sql[i] == '#'))
+                        (char.IsLetterOrDigit(sql[i]) || sql[i] == '_' || sql[i] == '$' || sql[i] == '#' ||
+                        sql[i] == '@'))
                         i++;
                     tokens.Add(new Token(sql.Substring(start, i - start), TokenKind.Word));
                     continue;
@@ -823,16 +862,68 @@ namespace SqlDbAid
                     index++;
                     return;
                 }
-                if (sql[index] == '\\' && index + 1 < sql.Length)
-                    index += 2;
-                else
-                    index++;
+                // T-SQL has no backslash escape; a doubled quote is the only escape.
+                index++;
             }
+        }
+
+        /// <summary>
+        /// Reads a GO batch separator (GO, optionally followed by a count and a line comment) when it
+        /// is the only content on its line; returns its normalized text, or null when it is not one.
+        /// </summary>
+        private static string TryReadBatchSeparator(string sql, ref int index)
+        {
+            int i = index;
+            if (i + 1 >= sql.Length ||
+                (sql[i] != 'G' && sql[i] != 'g') ||
+                (sql[i + 1] != 'O' && sql[i + 1] != 'o'))
+                return null;
+
+            for (int p = i - 1; p >= 0 && sql[p] != '\n' && sql[p] != '\r'; p--)
+            {
+                if (!char.IsWhiteSpace(sql[p]))
+                    return null;
+            }
+
+            var text = new StringBuilder(sql.Substring(i, 2));
+            i += 2;
+            int afterGo = i;
+            while (i < sql.Length && (sql[i] == ' ' || sql[i] == '\t'))
+                i++;
+            int countStart = i;
+            while (i < sql.Length && char.IsDigit(sql[i]))
+                i++;
+            if (i > countStart)
+            {
+                if (countStart == afterGo)
+                    return null;
+                text.Append(' ').Append(sql, countStart, i - countStart);
+                while (i < sql.Length && (sql[i] == ' ' || sql[i] == '\t'))
+                    i++;
+            }
+
+            if (i + 1 < sql.Length && sql[i] == '-' && sql[i + 1] == '-')
+            {
+                int commentStart = i;
+                while (i < sql.Length && sql[i] != '\r' && sql[i] != '\n')
+                    i++;
+                text.Append(' ').Append(sql, commentStart, i - commentStart);
+            }
+
+            if (i < sql.Length && sql[i] != '\r' && sql[i] != '\n')
+                return null;
+
+            index = i;
+            return text.ToString().TrimEnd();
         }
 
         private static string ReadOperator(string sql, ref int index)
         {
-            string[] operators = { "->>", "<=", ">=", "!=", "<>", "||", "::", "->", "+=", "-=", "*=", "/=" };
+            string[] operators =
+            {
+                "->>", "<=", ">=", "!=", "<>", "||", "::", "->",
+                "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="
+            };
             for (int i = 0; i < operators.Length; i++)
             {
                 string candidate = operators[i];
@@ -911,6 +1002,14 @@ namespace SqlDbAid
                     _lines.Add("");
                     added++;
                 }
+                _previous = null;
+            }
+
+            public void RemoveTrailingBlankLines()
+            {
+                FlushLine();
+                while (_lines.Count > 0 && _lines[_lines.Count - 1].Length == 0)
+                    _lines.RemoveAt(_lines.Count - 1);
                 _previous = null;
             }
 

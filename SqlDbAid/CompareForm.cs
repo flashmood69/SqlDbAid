@@ -36,7 +36,7 @@ namespace SqlDbAid
         Dictionary<string, int> htRight;
 
         private static readonly Regex SystemConstraintNameRegex = new Regex(
-            @"(?<![A-Za-z0-9_])(?:\[(?:DF|PK|FK|UQ|CK)__[^\]\r\n]*__[0-9A-F]{8}\]|(?:DF|PK|FK|UQ|CK)__[A-Za-z0-9_$#@]*__[0-9A-F]{8})(?![A-Za-z0-9_])",
+            @"(?<![A-Za-z0-9_])(?:\[(?:DF|PK|FK|UQ|CK)__[^\]\r\n]*__(?:[0-9A-F]{16}|[0-9A-F]{8})\]|(?:DF|PK|FK|UQ|CK)__[A-Za-z0-9_$#@]*__(?:[0-9A-F]{16}|[0-9A-F]{8}))(?![A-Za-z0-9_])",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static string ObjectKey(string type, string schema, string name)
@@ -56,6 +56,35 @@ namespace SqlDbAid
 
                 return "[" + name.Substring(0, 2).ToUpperInvariant() + "__00000000]";
             });
+        }
+
+        /// <summary>
+        /// Maps object keys to row indexes. Returns null (and reports the object in duplicate) when a
+        /// case-insensitive comparer finds two objects whose names differ only by case.
+        /// </summary>
+        private static Dictionary<string, int> BuildObjectIndex(DataTable dt, StringComparer comparer, ref string duplicate)
+        {
+            Dictionary<string, int> index = new Dictionary<string, int>(comparer);
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                string schema = dt.Rows[i]["obj_schema"].ToString();
+                string name = dt.Rows[i]["obj_name"].ToString();
+                string src = ObjectKey(dt.Rows[i]["obj_type"].ToString(), schema, name);
+
+                if (comparer != StringComparer.Ordinal && index.ContainsKey(src))
+                {
+                    if (duplicate == null)
+                    {
+                        duplicate = schema + "." + name;
+                    }
+                    return null;
+                }
+
+                index.Add(src, i);
+            }
+
+            return index;
         }
 
         public CompareForm()
@@ -130,22 +159,28 @@ namespace SqlDbAid
 
             ClearCompare();
 
-            StringComparer keyComparer = chkIgnoreCase.Checked ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-            htLeft = new Dictionary<string, int>(keyComparer);
-            htRight = new Dictionary<string, int>(keyComparer);
-
-            for (int i = 0; i < dtLeft.Rows.Count; i++)
+            htLeft = null;
+            htRight = null;
+            string duplicate = null;
+            if (chkIgnoreCase.Checked)
             {
-                string src = ObjectKey(dtLeft.Rows[i]["obj_type"].ToString(), dtLeft.Rows[i]["obj_schema"].ToString(), dtLeft.Rows[i]["obj_name"].ToString());
-
-                htLeft.Add(src, i);
+                htLeft = BuildObjectIndex(dtLeft, StringComparer.OrdinalIgnoreCase, ref duplicate);
+                htRight = BuildObjectIndex(dtRight, StringComparer.OrdinalIgnoreCase, ref duplicate);
             }
 
-            for (int i = 0; i < dtRight.Rows.Count; i++)
+            if (htLeft == null || htRight == null)
             {
-                string src = ObjectKey(dtRight.Rows[i]["obj_type"].ToString(), dtRight.Rows[i]["obj_schema"].ToString(), dtRight.Rows[i]["obj_name"].ToString());
-
-                htRight.Add(src, i);
+                // Object names that differ only by case (case-sensitive collation) cannot be
+                // matched case-insensitively without losing one of them; match names exactly instead.
+                htLeft = BuildObjectIndex(dtLeft, StringComparer.Ordinal, ref duplicate);
+                htRight = BuildObjectIndex(dtRight, StringComparer.Ordinal, ref duplicate);
+                if (duplicate != null)
+                {
+                    MessageBox.Show(
+                        "Objects whose names differ only by case were found (for example " + duplicate +
+                        "), so object names are matched case-sensitively for this comparison.",
+                        "Compare", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
 
             objCompare.Columns.Add("Status", typeof(String));
@@ -204,7 +239,7 @@ namespace SqlDbAid
                         right = NormalizeSystemConstraintNames(right);
                     }
 
-                    if (chkIgnoreCase.Checked && chkIgnoreEmptyLines.Checked)
+                    if (chkIgnoreCase.Checked)
                     {
                         left = left.ToLower();
                         right = right.ToLower();
@@ -212,8 +247,9 @@ namespace SqlDbAid
 
                     if (chkIgnoreEmptyLines.Checked)
                     {
-                        left = Regex.Replace(left.Replace("\r", "") + "\n", @"(^\s*[\n|\r])|(^\s*)", "", RegexOptions.Multiline);
-                        right = Regex.Replace(right.Replace("\r", "") + "\n", @"(^\s*[\n|\r])|(^\s*)", "", RegexOptions.Multiline);
+                        // Drop CRs and blank/whitespace-only lines; keep the content of other lines intact.
+                        left = Regex.Replace(left.Replace("\r", "") + "\n", @"^[^\S\n]*\n", "", RegexOptions.Multiline);
+                        right = Regex.Replace(right.Replace("\r", "") + "\n", @"^[^\S\n]*\n", "", RegexOptions.Multiline);
                     }
 
                     if (left != right)

@@ -111,15 +111,6 @@ See the [CHANGELOG.md](CHANGELOG.md) file for details on version history and upd
 
 Contributions are welcome! Feel free to submit issues or pull requests to help improve SqlDbAid.
 
-### Formatter Regression Checks
-
-The package-free formatter checks can be built and run with Visual Studio MSBuild:
-
-```powershell
-MSBuild.exe SqlDbAid.Tests\SqlDbAid.Tests.csproj /p:Platform=AnyCPU
-SqlDbAid.Tests\bin\Debug\SqlDbAid.Tests.exe
-```
-
 ## Support
 
 For support, please open an issue on the [GitHub repository](https://github.com/flashmood69/SqlDbAid/issues).

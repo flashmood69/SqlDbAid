@@ -1,5 +1,19 @@
 # SqlDbAid Changelog
 
+## [v2.8.0.0]
+- Add a "GO every" setting to the Export Data window to choose how many INSERT statements go in each GO batch (default 1, 0 = no GO).
+- Text export without the Unicode option now writes UTF-8 instead of the ANSI code page, so no characters are replaced by '?'.
+- Abort and the row limit now stop the query on the server instead of reading the remaining rows first.
+- Connections now identify themselves as SqlDbAid in server activity.
+- Insert scripts: add SET IDENTITY_INSERT for identity columns, write numbers culture-independently with full precision, and fix xml and datetimeoffset values.
+- Exports: write binary values as hex and keep fractional seconds when exporting query results.
+- Object scripting: fix nonclustered columnstore indexes, typed xml columns, and drop commands for user-defined types.
+- Correctly escape names containing `]` or non-ASCII characters in generated scripts, reports and data exports.
+- SQL formatter: fix string literals containing backslashes, @@functions, compound operators, GO separators and quoting of variables.
+- Offline Compare: fix the Ignore Case, Ignore Empty Lines and system constraint name options, names differing only by case, and diff alignment.
+- Fix crashes when pressing F5 during a query, on Data Search Query errors, and on invalid search patterns in the code viewer.
+- Fix several minor issues: stuck busy cursor over the object grid, lost database selection when reopening the dropdown, closing windows during a run, the Table MBytes report on very large tables, long server names on import, and Export Data window alignment.
+
 ## [v2.7.5.0]
 - Replace the update check's JSON dependency with the .NET serializer.
 - Log feature-probe failures in debug output and document portable settings.

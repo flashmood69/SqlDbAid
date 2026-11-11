@@ -64,7 +64,10 @@
             this.lblRowCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.chkUseLocalSettings = new System.Windows.Forms.CheckBox();
             this.chkUnicode = new System.Windows.Forms.CheckBox();
+            this.lblGoEvery = new System.Windows.Forms.Label();
+            this.numGoEvery = new System.Windows.Forms.NumericUpDown();
             this.exportStatusStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numGoEvery)).BeginInit();
             this.SuspendLayout();
             // 
             // btnAdd
@@ -162,7 +165,7 @@
             this.chkIncludeColumnNames.AutoSize = true;
             this.chkIncludeColumnNames.Checked = true;
             this.chkIncludeColumnNames.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkIncludeColumnNames.Location = new System.Drawing.Point(272, 231);
+            this.chkIncludeColumnNames.Location = new System.Drawing.Point(273, 233);
             this.chkIncludeColumnNames.Name = "chkIncludeColumnNames";
             this.chkIncludeColumnNames.Size = new System.Drawing.Size(135, 17);
             this.chkIncludeColumnNames.TabIndex = 10;
@@ -171,7 +174,7 @@
             // 
             // btnExport
             // 
-            this.btnExport.Location = new System.Drawing.Point(306, 304);
+            this.btnExport.Location = new System.Drawing.Point(306, 307);
             this.btnExport.Name = "btnExport";
             this.btnExport.Size = new System.Drawing.Size(75, 23);
             this.btnExport.TabIndex = 12;
@@ -187,7 +190,7 @@
             // chkScriptInsert
             // 
             this.chkScriptInsert.AutoSize = true;
-            this.chkScriptInsert.Location = new System.Drawing.Point(273, 256);
+            this.chkScriptInsert.Location = new System.Drawing.Point(273, 259);
             this.chkScriptInsert.Name = "chkScriptInsert";
             this.chkScriptInsert.Size = new System.Drawing.Size(82, 17);
             this.chkScriptInsert.TabIndex = 11;
@@ -312,7 +315,7 @@
             // btnAbort
             // 
             this.btnAbort.Enabled = false;
-            this.btnAbort.Location = new System.Drawing.Point(397, 304);
+            this.btnAbort.Location = new System.Drawing.Point(397, 307);
             this.btnAbort.Name = "btnAbort";
             this.btnAbort.Size = new System.Drawing.Size(75, 23);
             this.btnAbort.TabIndex = 16;
@@ -346,7 +349,7 @@
             this.chkUseLocalSettings.AutoSize = true;
             this.chkUseLocalSettings.Checked = true;
             this.chkUseLocalSettings.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkUseLocalSettings.Location = new System.Drawing.Point(273, 281);
+            this.chkUseLocalSettings.Location = new System.Drawing.Point(273, 284);
             this.chkUseLocalSettings.Name = "chkUseLocalSettings";
             this.chkUseLocalSettings.Size = new System.Drawing.Size(93, 17);
             this.chkUseLocalSettings.TabIndex = 18;
@@ -356,18 +359,48 @@
             // chkUnicode
             // 
             this.chkUnicode.AutoSize = true;
-            this.chkUnicode.Location = new System.Drawing.Point(397, 281);
+            this.chkUnicode.Location = new System.Drawing.Point(397, 284);
             this.chkUnicode.Name = "chkUnicode";
             this.chkUnicode.Size = new System.Drawing.Size(66, 17);
             this.chkUnicode.TabIndex = 19;
             this.chkUnicode.Text = "Unicode";
             this.chkUnicode.UseVisualStyleBackColor = true;
             // 
+            // lblGoEvery
+            //
+            this.lblGoEvery.AutoSize = true;
+            this.lblGoEvery.Enabled = false;
+            this.lblGoEvery.Location = new System.Drawing.Point(364, 260);
+            this.lblGoEvery.Name = "lblGoEvery";
+            this.lblGoEvery.Size = new System.Drawing.Size(48, 13);
+            this.lblGoEvery.TabIndex = 21;
+            this.lblGoEvery.Text = "GO every";
+            //
+            // numGoEvery
+            //
+            this.numGoEvery.Enabled = false;
+            this.numGoEvery.Location = new System.Drawing.Point(417, 257);
+            this.numGoEvery.Maximum = new decimal(new int[] {
+            99999,
+            0,
+            0,
+            0});
+            this.numGoEvery.Name = "numGoEvery";
+            this.numGoEvery.Size = new System.Drawing.Size(55, 20);
+            this.numGoEvery.TabIndex = 12;
+            this.numGoEvery.Value = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            //
             // ExportForm
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(484, 358);
+            this.Controls.Add(this.numGoEvery);
+            this.Controls.Add(this.lblGoEvery);
             this.Controls.Add(this.chkUnicode);
             this.Controls.Add(this.chkUseLocalSettings);
             this.Controls.Add(this.exportStatusStrip);
@@ -403,6 +436,7 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ExportForm_FormClosing);
             this.exportStatusStrip.ResumeLayout(false);
             this.exportStatusStrip.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numGoEvery)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -446,5 +480,7 @@
         private System.Windows.Forms.ToolStripStatusLabel lblRowCount;
         private System.Windows.Forms.CheckBox chkUseLocalSettings;
         private System.Windows.Forms.CheckBox chkUnicode;
+        private System.Windows.Forms.Label lblGoEvery;
+        private System.Windows.Forms.NumericUpDown numGoEvery;
     }
 }

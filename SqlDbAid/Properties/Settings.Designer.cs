@@ -147,6 +147,18 @@ namespace SqlDbAid.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int ScrInsertGoEvery {
+            get {
+                return ((int)(this["ScrInsertGoEvery"]));
+            }
+            set {
+                this["ScrInsertGoEvery"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1000")]
         public int QrsOpenTopRows {
             get {

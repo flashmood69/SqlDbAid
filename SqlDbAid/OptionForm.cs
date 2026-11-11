@@ -266,9 +266,9 @@ namespace SqlDbAid
                         string fullServerName;
                         while ((line = sr.ReadLine()) != null && objCount < 500)
                         {
-                            fullServerName = line.Length > 50 ? line.Substring(0, 50).ToUpper() : line.ToUpper();
+                            fullServerName = line.Trim().ToUpper();
 
-                            if (!lstServer.Items.Contains(fullServerName))
+                            if (fullServerName != "" && !lstServer.Items.Contains(fullServerName))
                             {
                                 lstServer.Items.Add(fullServerName);
                                 objCount++;

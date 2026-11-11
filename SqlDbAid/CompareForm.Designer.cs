@@ -364,7 +364,7 @@ namespace SqlDbAid
             this.chkIgnoreSystemNames.TabIndex = 7;
             this.chkIgnoreSystemNames.Text = "Ignore System Names";
             this.chkIgnoreSystemNames.UseVisualStyleBackColor = true;
-            this.tltCompare.SetToolTip(this.chkIgnoreSystemNames, "Ignore SQL Server-generated DF, PK, FK, UQ, and CK names ending in an 8-digit hexadecimal suffix.");
+            this.tltCompare.SetToolTip(this.chkIgnoreSystemNames, "Ignore SQL Server-generated DF, PK, FK, UQ, and CK names ending in an 8- or 16-digit hexadecimal suffix.");
             //
             // CompareForm
             // 

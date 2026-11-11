@@ -99,16 +99,22 @@ namespace SqlDbAid
                     btnAbort.Enabled = true;
 
                     string columns = "";
+                    bool identitySelected = false;
 
                     foreach (ListViewItem s in lstDestination.Items)
                     {
-                        string columnName = "[" + s.Text + "]";
+                        string columnName = DataExporter.QuoteIdentifier(s.Text);
                         string columnType = s.SubItems[1].Text.ToLower();
                         string columnSize = s.SubItems[2].Text;
                         string columnCollation = s.SubItems[4].Text;
 
                         bool escaping = false;
                         string computedColumn = "";
+
+                        if (s.SubItems[3].Text.ToLower() == "identity")
+                        {
+                            identitySelected = true;
+                        }
 
                         if (columns != "")
                         {
@@ -128,7 +134,8 @@ namespace SqlDbAid
                         else if (columnType == "datetimeoffset")
                         {
                             escaping = true;
-                            computedColumn = string.Format("REPLACE(CONVERT(VARCHAR(35), {0}, 121), '-', '')", columnName);
+                            // Only strip the dashes of the date part: a negative offset (e.g. -05:00) must keep its sign.
+                            computedColumn = string.Format("STUFF(CONVERT(VARCHAR(35), {0}, 121), 1, 10, REPLACE(LEFT(CONVERT(VARCHAR(35), {0}, 121), 10), '-', ''))", columnName);
                         }
                         else if (columnType == "date")
                         {
@@ -154,7 +161,7 @@ namespace SqlDbAid
                             escaping = true;
                             computedColumn = string.Format("CONVERT(VARCHAR(MAX), {0})", columnName);
                         }
-                        else if (columnType == "ntext")
+                        else if (columnType == "ntext" || columnType == "xml")
                         {
                             escaping = true;
                             computedColumn = string.Format("CONVERT(NVARCHAR(MAX), {0})", columnName);
@@ -182,7 +189,7 @@ namespace SqlDbAid
                         }
                     }
 
-                    string commandText = string.Format("SELECT {0} FROM [{1}].[{2}] WITH(NOLOCK)", columns, mObjectSchema, mObjectName);
+                    string commandText = string.Format("SELECT {0} FROM {1}.{2} WITH(NOLOCK)", columns, DataExporter.QuoteIdentifier(mObjectSchema), DataExporter.QuoteIdentifier(mObjectName));
 
                     if (chkScriptInsert.Checked)
                     {
@@ -190,6 +197,10 @@ namespace SqlDbAid
 
                         dataExporter.TableSchema = mObjectSchema;
                         dataExporter.TableName = mObjectName;
+                        dataExporter.IdentityInsert = identitySelected;
+                        dataExporter.InsertGoEvery = (int)numGoEvery.Value;
+                        // Remember the last value used as the default for the next export.
+                        Properties.Settings.Default.ScrInsertGoEvery = (int)numGoEvery.Value;
 
                         dataExporter.UseLocalSettings = false;
                     }
@@ -251,9 +262,12 @@ namespace SqlDbAid
             btnAbort.Enabled = false;
             lblRowCount.Text = "";
 
-            if (e.Cancelled && mClosing)
+            if (mClosing)
             {
+                // The user asked to close while the export was running: close now, whatever the outcome.
+                mClosing = false;
                 this.Close();
+                return;
             }
             else if (e.Cancelled)
             {
@@ -370,6 +384,12 @@ namespace SqlDbAid
                     chkScriptInsert.Enabled = false;
                 }
 
+                numGoEvery.Value = Math.Min(numGoEvery.Maximum, Math.Max(0, Properties.Settings.Default.ScrInsertGoEvery));
+                ToolTip goEveryTip = new ToolTip();
+                const string goEveryHint = "Number of INSERT statements per GO batch (0 = no GO between inserts).";
+                goEveryTip.SetToolTip(numGoEvery, goEveryHint);
+                goEveryTip.SetToolTip(lblGoEvery, goEveryHint);
+
                 LoadFieldNames();
             }
             catch (Exception ex)
@@ -388,6 +408,8 @@ namespace SqlDbAid
             txtEscape.Enabled = !mScriptInsert;
             chkIncludeColumnNames.Enabled = !mScriptInsert;
             chkUseLocalSettings.Enabled = !mScriptInsert;
+            lblGoEvery.Enabled = mScriptInsert;
+            numGoEvery.Enabled = mScriptInsert;
         }
 
         private void btnAbort_Click(object sender, EventArgs e)
@@ -404,11 +426,11 @@ namespace SqlDbAid
             if (mExporting)
             {
                 e.Cancel = true;
+                mClosing = true;
 
                 if (!dataExporter.CancellationPending)
                 {
                     lblStatus.Text = "Cancelling...";
-                    mClosing = true;
                     dataExporter.CancelAsync();
                 }
             }

@@ -22,6 +22,7 @@ namespace SqlDbAid
         private Regex searchRegex;
         private MatchCollection matchColl;
         private int currentMatch = -1;
+        private Exception searchError;
 
         private bool highlighting = true;
         private bool searchMatchesInitialized;
@@ -132,7 +133,7 @@ namespace SqlDbAid
 
                 if (syntaxColorsEnabled)
                 {
-                    sqlHL.Highlight(rtbCode, searchRegex);
+                    HighlightCode();
                     codeText = rtbCode.Text;
                     UpdateSearchMatches();
                 }
@@ -268,7 +269,7 @@ namespace SqlDbAid
                     UpdateSearchMatches();
                     if (codeText.Length <= MAX_AUTOMATIC_SYNTAX_LENGTH)
                     {
-                        sqlHL.Highlight(rtbCode, searchRegex);
+                        HighlightCode();
                         codeText = rtbCode.Text;
                         UpdateSearchMatches();
                     }
@@ -315,6 +316,7 @@ namespace SqlDbAid
             searchRegex = null;
             matchColl = null;
             currentMatch = -1;
+            searchError = null;
 
             if (searchText.Length == 0)
             {
@@ -322,11 +324,55 @@ namespace SqlDbAid
             }
 
             string search = useRegex ? searchText : Regex.Escape(searchText);
-            searchRegex = new Regex(
-                search,
-                RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase,
-                TimeSpan.FromMilliseconds(250));
-            matchColl = searchRegex.Matches(codeText);
+            try
+            {
+                Regex regex = new Regex(
+                    search,
+                    RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase,
+                    TimeSpan.FromMilliseconds(250));
+                MatchCollection matches = regex.Matches(codeText);
+                // Matches is lazy; evaluate it here so a timeout surfaces now instead of later.
+                _ = matches.Count;
+                searchRegex = regex;
+                matchColl = matches;
+            }
+            catch (ArgumentException ex)
+            {
+                // Invalid pattern: skip search highlighting.
+                searchError = ex;
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                searchError = ex;
+            }
+        }
+
+        private void HighlightCode()
+        {
+            try
+            {
+                sqlHL.Highlight(rtbCode, searchRegex);
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                // The search timed out while highlighting; highlight without search matches.
+                searchRegex = null;
+                matchColl = null;
+                searchError = ex;
+                sqlHL.Highlight(rtbCode, null);
+            }
+        }
+
+        private void ShowSearchError(Exception ex)
+        {
+            if (ex is RegexMatchTimeoutException)
+            {
+                MessageBox.Show(this, "The search exceeded the 250 ms limit. Please simplify the expression.", "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                MessageBox.Show(this, "The search expression is invalid.\r\n" + ex.Message, "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void FindInCode()
@@ -343,6 +389,12 @@ namespace SqlDbAid
             try
             {
                 SyntaxHighlight();
+                if (searchError != null)
+                {
+                    ShowSearchError(searchError);
+                    return;
+                }
+
                 if (matchColl == null || matchColl.Count == 0)
                 {
                     MessageBox.Show(this, "No matches found.", "Find", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -353,11 +405,11 @@ namespace SqlDbAid
             }
             catch (ArgumentException ex)
             {
-                MessageBox.Show(this, "The search expression is invalid.\r\n" + ex.Message, "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowSearchError(ex);
             }
-            catch (RegexMatchTimeoutException)
+            catch (RegexMatchTimeoutException ex)
             {
-                MessageBox.Show(this, "The search exceeded the 250 ms limit. Please simplify the expression.", "Find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowSearchError(ex);
             }
         }
 
@@ -422,7 +474,7 @@ namespace SqlDbAid
             {
                 codeText = rtbCode.Text;
                 UpdateSearchMatches();
-                sqlHL.Highlight(rtbCode, searchRegex);
+                HighlightCode();
                 codeText = rtbCode.Text;
                 syntaxColorsEnabled = true;
                 syntaxHighlightToolStripMenuItem.Enabled = false;

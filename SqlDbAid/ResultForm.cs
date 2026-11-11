@@ -279,6 +279,24 @@ namespace SqlDbAid
             {
                 text = "0x" + BitConverter.ToString(binary).Replace("-", "");
             }
+            else if (value is DateTime)
+            {
+                text = ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture).TrimEnd('.');
+            }
+            else if (value is DateTimeOffset)
+            {
+                DateTimeOffset dateTimeOffset = (DateTimeOffset)value;
+                text = dateTimeOffset.ToString("yyyy-MM-dd HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture).TrimEnd('.') +
+                    dateTimeOffset.ToString(" zzz", CultureInfo.InvariantCulture);
+            }
+            else if (value is double)
+            {
+                text = ((double)value).ToString("R", CultureInfo.InvariantCulture);
+            }
+            else if (value is float)
+            {
+                text = ((float)value).ToString("R", CultureInfo.InvariantCulture);
+            }
             else
             {
                 IFormattable formattable = value as IFormattable;
@@ -537,6 +555,14 @@ namespace SqlDbAid
         {
             if (e.KeyCode == Keys.F5)
             {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+
+                if (!btnRun.Enabled || dataExporter.IsBusy)
+                {
+                    return;
+                }
+
                 RefreshGrid();
                 txtQuery.Focus();
             }
@@ -1239,6 +1265,15 @@ namespace SqlDbAid
         {
             mExporting = false;
 
+            if (mClosing)
+            {
+                // The user asked to close while the query was running: close now, whatever the outcome.
+                mClosing = false;
+                dataExporter.ClearResult();
+                this.Close();
+                return;
+            }
+
             txtMessages.Text = dataExporter.Message;
 
             if (dataExporter.Message.Contains("Message"))
@@ -1249,11 +1284,6 @@ namespace SqlDbAid
             if (e.Error != null)
             {
                 MessageBox.Show(((Exception)e.Error).Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            else if (e.Cancelled && mClosing)
-            {
-                dataExporter.ClearResult();
-                this.Close();
             }
             else if (dataExporter.ResultTable != null)
             {
@@ -1296,7 +1326,8 @@ namespace SqlDbAid
 
         private void ResultForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (mModified)
+            // mClosing means the user already confirmed closing while the query was running.
+            if (mModified && !mClosing)
             {
                 if (MessageBox.Show("Close without saving changes?", "Confirm close", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.No)
                 {
@@ -1308,11 +1339,11 @@ namespace SqlDbAid
             if (mExporting)
             {
                 e.Cancel = true;
+                mClosing = true;
 
                 if (!dataExporter.CancellationPending)
                 {
                     lblRow.Text = "Cancelling...";
-                    mClosing = true;
                     dataExporter.CancelAsync();
                 }
             }

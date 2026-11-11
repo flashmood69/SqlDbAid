@@ -195,6 +195,7 @@ namespace SqlDbAid
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder
             {
                 ["Data Source"] = Properties.Settings.Default.MwnServer,
+                ["Application Name"] = "SqlDbAid",
                 ["Connect Timeout"] = Properties.Settings.Default.QrsConnectionTimeout
             };
 
@@ -504,6 +505,7 @@ namespace SqlDbAid
                 {
                     UseWaitCursor = false;
                     dgvCode.UseWaitCursor = false;
+                    ClearStaleGridWaitCursor();
                     cmbServer.Enabled = serverEnabled;
                     cmbDatabase.Enabled = databaseEnabled;
                     cmbAuthMode.Enabled = authEnabled;
@@ -514,6 +516,28 @@ namespace SqlDbAid
                     btnRefresh.Enabled = refreshEnabled;
                     UpdateControlStatus();
                 }
+            }
+        }
+
+        private static string DropCommand(string objType, string objSchema, string objName)
+        {
+            if (objType == "Schema")
+            {
+                return string.Format(QueryHelper.Query(QueryHelper.QueryId.DropSchemaTemplate),
+                    QueryHelper.EscapeLiteral(objName), objType.ToUpper(), QueryHelper.EscapeIdentifier(objName));
+            }
+            else if (objType == "Type")
+            {
+                return string.Format(QueryHelper.Query(QueryHelper.QueryId.DropTypeTemplate),
+                    QueryHelper.EscapeLiteral(objName), QueryHelper.EscapeLiteral(objSchema), objType.ToUpper(),
+                    QueryHelper.EscapeIdentifier(objSchema), QueryHelper.EscapeIdentifier(objName));
+            }
+            else
+            {
+                // OBJECT_ID(N'[schema].[name]'): escape ] for the brackets first, then ' for the literal
+                return string.Format(QueryHelper.Query(QueryHelper.QueryId.DropTemplate),
+                    QueryHelper.EscapeLiteral(QueryHelper.EscapeIdentifier(objSchema)), QueryHelper.EscapeLiteral(QueryHelper.EscapeIdentifier(objName)), objType.ToUpper(),
+                    QueryHelper.EscapeIdentifier(objSchema), QueryHelper.EscapeIdentifier(objName));
             }
         }
 
@@ -537,7 +561,7 @@ namespace SqlDbAid
 
             using (StreamWriter sw = new StreamWriter(fileName))
             {
-                sw.WriteLine("USE [{0}]\r\n", mDbName);
+                sw.WriteLine("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
 
                 if (Properties.Settings.Default.ScrAddDropCommand == true)
                 {
@@ -548,23 +572,7 @@ namespace SqlDbAid
                         string objName = dgvCode["obj_name", i].Value.ToString();
                         string objType = dgvCode["obj_type", i].Value.ToString();
 
-                        string header = "";
-
-                        if (objType == "Schema")
-                        {
-                            header = QueryHelper.Query(QueryHelper.QueryId.DropSchemaTemplate);
-                            sw.WriteLine(string.Format(header, objName.Replace("'", "''"), objType.ToUpper(), objName));
-                        }
-                        else if (objType == "Type")
-                        {
-                            header = QueryHelper.Query(QueryHelper.QueryId.DropTypeTemplate);
-                            sw.WriteLine(string.Format(header, objName.Replace("'", "''"), objSchema.Replace("'", "''"), objType.ToUpper(), objSchema, objName));
-                        }
-                        else
-                        {
-                            header = QueryHelper.Query(QueryHelper.QueryId.DropTemplate);
-                            sw.WriteLine(string.Format(header, objSchema.Replace("'", "''"), objName.Replace("'", "''"), objType.ToUpper(), objSchema, objName));
-                        }
+                        sw.WriteLine(DropCommand(objType, objSchema, objName));
 
                         sw.WriteLine("GO\r\n");
                     }
@@ -639,18 +647,7 @@ namespace SqlDbAid
                         {
                             if (Properties.Settings.Default.ScrAddDropCommand == true)
                             {
-                                string header = "";
-
-                                if (objType == "Schema")
-                                {
-                                    header = QueryHelper.Query(QueryHelper.QueryId.DropSchemaTemplate);
-                                    sw.WriteLine(string.Format(header, objName.Replace("'", "''"), objType.ToUpper(), objName));
-                                }
-                                else
-                                {
-                                    header = QueryHelper.Query(QueryHelper.QueryId.DropTemplate);
-                                    sw.WriteLine(string.Format(header, objSchema.Replace("'", "''"), objName.Replace("'", "''"), objType.ToUpper(), objSchema, objName));
-                                }
+                                sw.WriteLine(DropCommand(objType, objSchema, objName));
 
                                 sw.WriteLine("\r\nGO");
                             }
@@ -1360,7 +1357,7 @@ namespace SqlDbAid
             resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.TableStatistics), supportFilter, objectName.Replace("'", "''"), objectSchema.Replace("'", "''"));
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", mDbName);
+            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
             resultForm.FileName = FileHelper.CleanFileName(string.Format("{0}{1}", mDbName.ToLower(), resultForm.AppendTitle.Replace(" ", "")));
             resultForm.ExportColumn = "script";
 
@@ -1389,7 +1386,7 @@ namespace SqlDbAid
             resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.MissingIndexes), objectName.Replace("'", "''"), objectSchema.Replace("'", "''"));
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", mDbName);
+            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
             resultForm.FileName = FileHelper.CleanFileName(string.Format("{0}{1}", mDbName.ToLower(), resultForm.AppendTitle.Replace(" ", "")));
             resultForm.ExportColumn = "script";
 
@@ -1435,7 +1432,7 @@ namespace SqlDbAid
             resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.IndexesStatus), analysisLevel, objectName.Replace("'", "''"), objectSchema.Replace("'", "''"), comment1, comment2, compression);
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", mDbName);
+            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
             resultForm.FileName = FileHelper.CleanFileName(string.Format("{0}{1}", mDbName.ToLower(), resultForm.AppendTitle.Replace(" ", "")));
             resultForm.ExportColumn = "script";
 
@@ -1499,6 +1496,23 @@ namespace SqlDbAid
             dgvCode.CurrentCellDirtyStateChanged += dgvCode_CurrentCellDirtyStateChanged;
             dgvCode.DataBindingComplete += dgvCode_DataBindingComplete;
             dgvCode.RowsRemoved += dgvCode_RowsRemoved;
+            dgvCode.CursorChanged += dgvCode_CursorChanged;
+        }
+
+        // DataGridView remembers its "previous" cursor when it shows the column/row resize cursor.
+        // If that happens while UseWaitCursor is on, the remembered cursor is the wait cursor, and
+        // the grid later restores it as an explicit Cursor value that outlives the busy period.
+        private void dgvCode_CursorChanged(object sender, EventArgs e)
+        {
+            ClearStaleGridWaitCursor();
+        }
+
+        private void ClearStaleGridWaitCursor()
+        {
+            if (!dgvCode.UseWaitCursor && dgvCode.Cursor == Cursors.WaitCursor)
+            {
+                dgvCode.Cursor = Cursors.Default;
+            }
         }
 
         #endregion
@@ -1562,6 +1576,7 @@ namespace SqlDbAid
             cmbAuthMode.Enabled = false;
             UseWaitCursor = true;
             bool databaseListLoaded = false;
+            string previousDbName = cmbDatabase.SelectedIndex > 0 ? cmbDatabase.Text : "";
 
             try
             {
@@ -1579,6 +1594,20 @@ namespace SqlDbAid
                 cmbDatabase.DataSource = mDatabaseBinding;
                 cmbDatabase.DisplayMember = "database_name";
                 cmbDatabase.ValueMember = "id";
+
+                // Keep the previously selected database selected if it still exists (exact, case-sensitive match).
+                if (previousDbName != "")
+                {
+                    for (int i = 1; i < result.Databases.Rows.Count; i++)
+                    {
+                        if (string.Equals(result.Databases.Rows[i]["database_name"].ToString(), previousDbName, StringComparison.Ordinal))
+                        {
+                            cmbDatabase.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+
                 databaseListLoaded = true;
             }
             catch (Exception ex)
@@ -1608,7 +1637,11 @@ namespace SqlDbAid
 
             if (databaseListLoaded && !mIsClosing && !IsDisposed)
             {
-                cmbDatabase_SelectedIndexChanged(cmbDatabase, EventArgs.Empty);
+                string currentDbName = cmbDatabase.SelectedIndex > 0 ? cmbDatabase.Text : "";
+                if (!string.Equals(currentDbName, previousDbName, StringComparison.Ordinal))
+                {
+                    cmbDatabase_SelectedIndexChanged(cmbDatabase, EventArgs.Empty);
+                }
             }
         }
 
@@ -1831,7 +1864,7 @@ namespace SqlDbAid
             resultForm.CommandText = QueryHelper.Query(QueryHelper.QueryId.MissingFkIndexes);
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", mDbName);
+            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
             resultForm.FileName = FileHelper.CleanFileName(string.Format("{0}{1}", mDbName.ToLower(), resultForm.AppendTitle.Replace(" ", "")));
             resultForm.ExportColumn = "script";
 
@@ -1877,7 +1910,7 @@ namespace SqlDbAid
             resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.ExistingIndexes), filter);
             resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", mDbName);
+            resultForm.ExportFileHeader = string.Format("USE [{0}]\r\n", QueryHelper.EscapeIdentifier(mDbName));
             resultForm.FileName = FileHelper.CleanFileName(string.Format("{0}{1}", mDbName.ToLower(), resultForm.AppendTitle.Replace(" ", "")));
             resultForm.ExportColumn = "script";
 
@@ -2257,23 +2290,34 @@ namespace SqlDbAid
         private void dataSearchQueryToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string qry = QueryHelper.Query(QueryHelper.QueryId.DataSearch);
-            SqlDataReader dr;
             StringBuilder searchQry = new StringBuilder();
 
-            using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+            Cursor.Current = Cursors.WaitCursor;
+            try
             {
-                SqlCommand cmd = new SqlCommand(qry, cnn);
-                cmd.CommandTimeout = Properties.Settings.Default.QrsExecutionTimeout;
-
-                cnn.Open();
-                dr = cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-                while (dr.Read())
+                using (SqlConnection cnn = new SqlConnection(BuildConnectionString(mDbName)))
+                using (SqlCommand cmd = new SqlCommand(qry, cnn))
                 {
-                    searchQry.AppendFormat("{0}\r\n", dr["cmd"].ToString());
-                }
+                    cmd.CommandTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
-                dr.Close();
+                    cnn.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                    {
+                        while (dr.Read())
+                        {
+                            searchQry.AppendFormat("{0}\r\n", dr["cmd"].ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            finally
+            {
+                Cursor.Current = Cursors.Default;
             }
 
             ResultForm resultForm = new ResultForm();
@@ -2533,7 +2577,7 @@ namespace SqlDbAid
                 resultForm.ShowIcon = true;
 
                 resultForm.ConnectionString = BuildConnectionString(mDbName);
-                resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.ViewData), openTopRows, mDbName, obj_schema, obj_name, openWithNoLock);
+                resultForm.CommandText = string.Format(QueryHelper.Query(QueryHelper.QueryId.ViewData), openTopRows, QueryHelper.EscapeIdentifier(mDbName), QueryHelper.EscapeIdentifier(obj_schema), QueryHelper.EscapeIdentifier(obj_name), openWithNoLock);
                 resultForm.ExecutionTimeout = Properties.Settings.Default.QrsExecutionTimeout;
 
                 resultForm.ShowQuery = true;

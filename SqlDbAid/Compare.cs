@@ -163,10 +163,10 @@ namespace SqlDbAid
                 }
                 int upperDestStart = curBestIndex + curBestLength;
                 int upperSourceStart = sourceIndex + curBestLength;
-                if (destEnd > upperDestStart)
+                if (destEnd >= upperDestStart)
                 {
                     //we still have more upper dest data
-                    if (sourceEnd > upperSourceStart)
+                    if (sourceEnd >= upperSourceStart)
                     {
                         //set still have more upper source data
                         // Recursive call to process upper indexes
@@ -287,15 +287,16 @@ namespace SqlDbAid
                 if ((!AddChanges(retval, curDest, drs.DestIndex, curSource, drs.SourceIndex)) &&
                     (last != null))
                 {
+                    //merge into the span already in the report; keep last pointing at it
                     last.AddLength(drs.Length);
                 }
                 else
                 {
                     retval.Add(drs);
+                    last = drs;
                 }
                 curDest = drs.DestIndex + drs.Length;
                 curSource = drs.SourceIndex + drs.Length;
-                last = drs;
             }
 
             //Process any tail end data

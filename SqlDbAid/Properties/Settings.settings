@@ -32,6 +32,9 @@
     <Setting Name="QrsConnectionTimeout" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">15</Value>
     </Setting>
+    <Setting Name="ScrInsertGoEvery" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
     <Setting Name="QrsOpenTopRows" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1000</Value>
     </Setting>

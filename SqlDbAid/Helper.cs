@@ -94,6 +94,18 @@ namespace SqlDbAid
             DataSearch
         }
 
+        // Escapes an identifier for use inside [...] delimiters (same as QUOTENAME without the brackets).
+        public static string EscapeIdentifier(string name)
+        {
+            return name == null ? null : name.Replace("]", "]]");
+        }
+
+        // Escapes a string for use inside a N'...' literal.
+        public static string EscapeLiteral(string value)
+        {
+            return value == null ? null : value.Replace("'", "''");
+        }
+
         public static string Query(QueryId queryId)
         {
             if (queryId == QueryId.GuiDatabase)
@@ -326,7 +338,7 @@ BEGIN
 					WHEN TY.name = 'xml' THEN
 						CASE CL.is_xml_document
 							WHEN 1 THEN (SELECT '(DOCUMENT ' + QUOTENAME(SCHEMA_NAME(XSC.schema_id)) + '.' + QUOTENAME(XSC.name) + ')' FROM sys.xml_schema_collections XSC WHERE XSC.xml_collection_id = CL.xml_collection_id)
-							ELSE ''
+							ELSE ISNULL((SELECT '(CONTENT ' + QUOTENAME(SCHEMA_NAME(XSC.schema_id)) + '.' + QUOTENAME(XSC.name) + ')' FROM sys.xml_schema_collections XSC WHERE XSC.xml_collection_id = CL.xml_collection_id AND CL.xml_collection_id <> 0), '')
 						END
 					WHEN CL.max_length = -1 AND TY.name NOT IN ('geography','geometry') THEN '(max)'
 					WHEN TY.name IN ('binary','char','varbinary','varchar') THEN '(' + CONVERT(VARCHAR, CL.max_length) + ')'
@@ -568,8 +580,8 @@ BEGIN
 			0 column_id,
 			CHAR(13) + CHAR(10) + CHAR(13) + CHAR(10) + 'CREATE' + cn_type + ix_type + ' INDEX ' + QUOTENAME(index_name) + ' ON ' + QUOTENAME(object_schema) + '.' + QUOTENAME([object_name]) +
 			CASE
-				WHEN ix_type LIKE '%COLUMNSTORE%' THEN ''
-				WHEN IX.type IN (5, 6) THEN ' (' + CONVERT(XML,'<r>' + SUBSTRING(inc_columns, 1, LEN(inc_columns)-1) + '</r>').value('r[1]','NVARCHAR(max)') + ')'
+				WHEN IX.type = 5 THEN ''
+				WHEN IX.type = 6 THEN ' (' + CONVERT(XML,'<r>' + SUBSTRING(inc_columns, 1, LEN(inc_columns)-1) + '</r>').value('r[1]','NVARCHAR(max)') + ')'
 				ELSE ' (' + CONVERT(XML,'<r>' + SUBSTRING(idx_columns, 1, LEN(idx_columns)-1) + '</r>').value('r[1]','NVARCHAR(max)') + ')'
 			END
 			 +
@@ -1143,7 +1155,7 @@ SELECT
 FROM
 	sys.databases
 WHERE
-	name = ISNULL(NULLIF('{0}', ''), DB_NAME())
+	name = ISNULL(NULLIF(N'{0}', N''), DB_NAME())
 /*sda*/
 ";
             }
@@ -1158,9 +1170,9 @@ FROM
 	sys.all_columns ac ON
 		ac.object_id = ao.object_id	
 WHERE
-	ao.name = '{0}' AND
+	ao.name = N'{0}' AND
 	ao.is_ms_shipped = 1 AND
-	ac.name = '{1}'
+	ac.name = N'{1}'
 /*sda*/
 ";
             }
@@ -1293,7 +1305,7 @@ ORDER BY
             {
                 return @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 DECLARE @object_id INT
-SELECT @object_id = object_id FROM sys.objects WHERE name = '{0}' AND schema_id = SCHEMA_ID('{1}')
+SELECT @object_id = object_id FROM sys.objects WHERE name = N'{0}' AND schema_id = SCHEMA_ID(N'{1}')
 /*sda*/
 
 SELECT
@@ -1362,7 +1374,7 @@ ORDER BY
                 return @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 DECLARE @object_id INT
 DECLARE @db_id INT = DB_ID()
-SELECT @object_id = object_id FROM sys.objects WHERE name = '{1}' AND schema_id = SCHEMA_ID('{2}')
+SELECT @object_id = object_id FROM sys.objects WHERE name = N'{1}' AND schema_id = SCHEMA_ID(N'{2}')
 SELECT * INTO #IUS FROM sys.dm_db_index_usage_stats
 SELECT * INTO #IOS FROM sys.dm_db_index_operational_stats(@db_id, @object_id, NULL, NULL)
 {3}SELECT CONVERT(INT, NULL) object_id, CONVERT(INT, NULL) index_id, CONVERT(INT, NULL) partition_number, CONVERT(NVARCHAR, NULL) alloc_unit_type_desc, CONVERT(BIGINT, NULL) record_count, CONVERT(FLOAT, NULL) avg_fragmentation_in_percent, CONVERT(TINYINT, NULL) index_level INTO #IPS
@@ -1413,7 +1425,7 @@ SELECT
 		WHEN I.type_desc <> 'HEAP' AND AU.type_desc = 'IN_ROW_DATA' AND ISNULL(PS.index_level, 0) = 0 THEN
 '--' + SCHEMA_NAME(O.schema_id) + '.' + O.name + ' fragment impact (record_count * fragment_percent): ' + CONVERT(VARCHAR, CONVERT(BIGINT, ISNULL(PS.record_count, P.[rows]) * ISNULL(PS.avg_fragmentation_in_percent, 0) / 100))
 		WHEN I.type_desc = 'HEAP' AND AU.type_desc = 'IN_ROW_DATA' THEN
-'--Check HEAP fragmentation, eventually defrag creating a clustered index (most selective column could be appropriate): SELECT partition_number,avg_fragmentation_in_percent FROM sys.dm_db_index_physical_stats(@db_id, OBJECT_ID(N''[' + DB_NAME() + '].[' + SCHEMA_NAME(O.schema_id) + '].[' + O.name + ']''), NULL, NULL, ''DETAILED'') WHERE index_type_desc = ''HEAP'' AND alloc_unit_type_desc = ''IN_ROW_DATA'''
+'--Check HEAP fragmentation, eventually defrag creating a clustered index (most selective column could be appropriate): SELECT partition_number,avg_fragmentation_in_percent FROM sys.dm_db_index_physical_stats(@db_id, OBJECT_ID(N''' + REPLACE(QUOTENAME(DB_NAME()) + '.' + QUOTENAME(SCHEMA_NAME(O.schema_id)) + '.' + QUOTENAME(O.name), '''', '''''') + '''), NULL, NULL, ''DETAILED'') WHERE index_type_desc = ''HEAP'' AND alloc_unit_type_desc = ''IN_ROW_DATA'''
 		ELSE ''
 	END comment
 FROM
@@ -1590,7 +1602,7 @@ ORDER BY
             {
                 return @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 DECLARE @object_id INT
-SELECT @object_id = object_id FROM sys.objects WHERE name = '{1}' AND schema_id = SCHEMA_ID('{2}')
+SELECT @object_id = object_id FROM sys.objects WHERE name = N'{1}' AND schema_id = SCHEMA_ID(N'{2}')
 /*sda*/
 
 SELECT 
@@ -1715,10 +1727,10 @@ SELECT
 		ELSE CONVERT(DECIMAL(5, 2), 100. * CONVERT(FLOAT, T.reserved) / CONVERT(FLOAT, S.reserved))
 	END [weight %],
 	CONVERT(bigint, T.record_count) record_count,
-	CONVERT(DECIMAL(10, 4), CONVERT(FLOAT, T.reserved) / 1024.) reserved,
-	CONVERT(DECIMAL(10, 4), CONVERT(FLOAT, T.data) / 1024.) data,
-	CONVERT(DECIMAL(10, 4), CONVERT(FLOAT, T.index_size) / 1024.) index_size,
-	CONVERT(DECIMAL(10, 4), CONVERT(FLOAT, T.unused) / 1024.) unused,
+	CONVERT(DECIMAL(19, 4), CONVERT(FLOAT, T.reserved) / 1024.) reserved,
+	CONVERT(DECIMAL(19, 4), CONVERT(FLOAT, T.data) / 1024.) data,
+	CONVERT(DECIMAL(19, 4), CONVERT(FLOAT, T.index_size) / 1024.) index_size,
+	CONVERT(DECIMAL(19, 4), CONVERT(FLOAT, T.unused) / 1024.) unused,
 	'UPDATE STATISTICS ' + T.table_name script
 FROM
 	@TMP T
@@ -2076,8 +2088,8 @@ FROM
 	) JN
 WHERE
 	SP.RN = 1
-	{0}AND (ET.[text] NOT LIKE '%/*sda*/%' OR ET.[text] IS NULL)
-	{1}AND DB_NAME(SP.dbid) = '{2}'
+	{0}AND (ES.[program_name] <> 'SqlDbAid' OR ES.[program_name] IS NULL)
+	{1}AND DB_NAME(SP.dbid) = N'{2}'
 ORDER BY
 	1 DESC,
 	2
@@ -2500,7 +2512,7 @@ FROM
 WHERE
 	(1=1)
 	{0}AND sql_statement NOT LIKE '%/*sda*/%'
-	{1}AND database_name = '{2}'
+	{1}AND database_name = N'{2}'
 ORDER BY
 	session_id,
 	database_name,
@@ -2546,7 +2558,7 @@ TOPQRY AS
 	WHERE
 		qt.encrypted = 0
 		{0}AND qt.text NOT LIKE '%/*sda*/%'
-		{1}AND ISNULL(DB_NAME(ISNULL(qt.dbid, pa_dbid)), '') = '{2}'
+		{1}AND ISNULL(DB_NAME(ISNULL(qt.dbid, pa_dbid)), '') = N'{2}'
 		{3}AND DATEDIFF(MI, qs.last_execution_time, GETDATE()) <= {4}
 	ORDER BY
 		{5}total_worker_time DESC
@@ -2656,7 +2668,7 @@ FROM
 		WHERE
 			pa.attribute = 'dbid'
 			{0}AND st.text not like '%/*sda*/%'
-			{1}AND DB_NAME(ISNULL(st.dbid, CONVERT(SMALLINT, pa.value))) = '{2}'
+			{1}AND DB_NAME(ISNULL(st.dbid, CONVERT(SMALLINT, pa.value))) = N'{2}'
 	) C
 GROUP BY
 	database_name,
@@ -2673,7 +2685,7 @@ SELECT
     COUNT(1) / 128 used_MB
 FROM sys.dm_os_buffer_descriptors
 WHERE [database_id] <> 32767
-{0}AND DB_NAME([database_id]) = '{1}'
+{0}AND DB_NAME([database_id]) = N'{1}'
 GROUP BY [database_id]
 ORDER BY used_MB DESC
 /*sda*/
