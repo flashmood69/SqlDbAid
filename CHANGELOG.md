@@ -1,5 +1,9 @@
 # SqlDbAid Changelog
 
+## [v2.8.1.0]
+- SQL syntax highlighting: fix nested block comments (`/* ... /* ... */ ... */`) losing their colour after the inner comment.
+- Refresh the application icon with rounded corners.
+
 ## [v2.8.0.0]
 - Add a "GO every" setting to the Export Data window to choose how many INSERT statements go in each GO batch (default 1, 0 = no GO).
 - Text export without the Unicode option now writes UTF-8 instead of the ANSI code page, so no characters are replaced by '?'.

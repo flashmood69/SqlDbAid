@@ -68,18 +68,23 @@ namespace SqlDbAid
                 else if (current == '/' && position + 1 < text.Length && text[position + 1] == '*')
                 {
                     position += 2;
-                    while (position + 1 < text.Length &&
-                        !(text[position] == '*' && text[position + 1] == '/'))
+                    int nesting = 1;
+                    while (position < text.Length && nesting > 0)
                     {
-                        position++;
-                    }
-                    if (position + 1 < text.Length)
-                    {
-                        position += 2;
-                    }
-                    else
-                    {
-                        position = text.Length;
+                        if (position + 1 < text.Length && text[position] == '/' && text[position + 1] == '*')
+                        {
+                            nesting++;
+                            position += 2;
+                        }
+                        else if (position + 1 < text.Length && text[position] == '*' && text[position + 1] == '/')
+                        {
+                            nesting--;
+                            position += 2;
+                        }
+                        else
+                        {
+                            position++;
+                        }
                     }
                     colorIndex = 3;
                 }
